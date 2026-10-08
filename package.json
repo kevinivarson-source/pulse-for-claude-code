@@ -1,0 +1,9 @@
+{
+  "name": "pulse-for-claude-code",
+  "private": true,
+  "description": "Hear and see Claude Code work: every session as rhythm, graphics and sound.",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": "22.x" },
+  "dependencies": { "postgres": "3.4.9" }
+}
