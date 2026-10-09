@@ -3,7 +3,17 @@
 import postgres from 'postgres';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-const url = process.env.DATABASE_URL || process.env.STORAGE_URL || process.env.POSTGRES_URL || '';
+const rawUrl = process.env.DATABASE_URL || process.env.STORAGE_URL || process.env.POSTGRES_URL || '';
+// Hosting integrations add extras to the link that aren't Postgres settings (Supabase adds supa=,
+// Prisma-style links add pgbouncer=). Left in, they'd be sent to the server and could be refused.
+function cleanUrl(u) {
+  try {
+    const x = new URL(u);
+    for (const k of ['supa', 'pgbouncer', 'channel_binding', 'connection_limit', 'pool_timeout', 'schema']) x.searchParams.delete(k);
+    return x.toString();
+  } catch { return u; }
+}
+const url = rawUrl && cleanUrl(rawUrl);
 const KEY = process.env.PULSE_KEY || '';
 // Optional: instead of the key itself, store only its fingerprint (SHA-256, 64 hex characters) as PULSE_KEY_SHA256.
 const KEY_SHA = /^[0-9a-f]{64}$/i.test(process.env.PULSE_KEY_SHA256 || '') ? Buffer.from(process.env.PULSE_KEY_SHA256, 'hex') : null;
@@ -50,6 +60,7 @@ export const laneLetter = n =>
 export async function guard(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (!globalThis.__pulseTestSql && !url) { res.status(503).json({ error: 'Pulse has no database yet. Connect Neon, Supabase or any Postgres to this project in Vercel, then redeploy.' }); return false; }
+  if (/\s/.test(KEY)) { res.status(503).json({ error: 'Your PULSE_KEY contains a space. Pick a key without spaces in your Vercel project settings, then redeploy.' }); return false; }
   if (!hasKey) { res.status(503).json({ error: 'Pulse has no key yet. Add PULSE_KEY (12 or more characters) in your Vercel project settings, then redeploy.' }); return false; }
   if (!authed(req)) { res.status(401).json({ error: 'This device is not paired. Open your pairing link to connect it.' }); return false; }
   await ensure();

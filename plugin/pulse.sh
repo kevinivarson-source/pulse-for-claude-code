@@ -28,8 +28,13 @@ if [ -z "$file" ]; then
   fi
   rmdir "$lock" 2>/dev/null
 fi
-ms=$(date +%s%3N 2>/dev/null)
-case "$ms" in *N*|"") ms="$(date +%s)000" ;; esac
+# Millisecond clock. Bash 5 has it built in; Linux and Git for Windows `date` know %3N;
+# macOS ships Bash 3.2 and a `date` without milliseconds, so it uses the built-in Perl instead.
+ms=""
+if [ -n "${EPOCHREALTIME:-}" ]; then t=${EPOCHREALTIME/,/.}; f=${t#*.}000; ms="${t%%.*}${f:0:3}"; fi
+case "$ms" in [0-9]*) ;; *) ms=$(date +%s%3N 2>/dev/null) ;; esac
+case "$ms" in *[!0-9]*|"") ms=$(perl -MTime::HiRes=time -e 'printf "%d", time*1000' 2>/dev/null) ;; esac
+case "$ms" in *[!0-9]*|"") ms="$(date +%s)000" ;; esac
 if [ -n "$tool" ]; then echo "$ms $code $tool" >> "$file"; else echo "$ms $code" >> "$file"; fi
 
 # Cloud upload: sends every line not yet confirmed. Retries are safe; the cloud ignores repeats.
@@ -37,7 +42,11 @@ if [ -n "$tool" ]; then echo "$ms $code $tool" >> "$file"; else echo "$ms $code"
 cfg="$dir/cloud"; [ -f "$cfg" ] || cfg="$(dirname "$0")/cloud"
 [ -f "$cfg" ] || exit 0
 (
-  . "$cfg"
+  # Read the two settings as plain text (never run the file), so keys with $, & or quotes work,
+  # and Windows line endings don't break them.
+  get() { sed -n "s/^$1=//p" "$cfg" | head -1 | tr -d '\r' | sed 's/^"\(.*\)"$/\1/; s/^'"'"'\(.*\)'"'"'$/\1/'; }
+  PULSE_URL=$(get PULSE_URL); PULSE_URL=${PULSE_URL%/}; PULSE_KEY=$(get PULSE_KEY)
+  [ -n "$PULSE_URL" ] && [ -n "$PULSE_KEY" ] || exit 0
   sent="$file.sent"
   n=$(cat "$sent" 2>/dev/null); n=${n:-1}
   total=$(wc -l < "$file" | tr -d ' ')
