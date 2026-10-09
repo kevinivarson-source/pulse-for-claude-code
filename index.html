@@ -166,9 +166,9 @@ dialog p{margin:0 0 12px;color:var(--muted);font-size:14px}
 <dialog id="pairDlg">
   <div id="pairOff">
     <h3>Pair this device</h3>
-    <p>Open the pairing link Claude gave you on this device, or scan the code shown on a device that's already paired. You can also paste the link here.</p>
+    <p>Type the key you made up during setup, or paste a pairing link. You can also scan the code shown on a device that's already paired.</p>
     <div class="stack">
-      <input class="field" id="pairInput" placeholder="https://…/#pair=…" autocomplete="off" aria-label="Pairing link">
+      <input class="field" id="pairInput" placeholder="Your key or pairing link" autocomplete="off" aria-label="Pairing link">
       <p class="err" id="pairErr"></p>
       <button class="btn solid" id="pairGo" type="button">Pair</button>
     </div>
@@ -392,7 +392,7 @@ function setNP(){
 }
 function media(){
   if(!('mediaSession' in navigator)||!cur)return;
-  try{navigator.mediaSession.metadata=new MediaMetadata({title:titleOf(cur),artist:'Claude Pulse',album:pretty(cur.project),artwork:[{src:$('#cover').toDataURL('image/png'),sizes:'168x168',type:'image/png'}]});
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:titleOf(cur),artist:'Pulse',album:pretty(cur.project),artwork:[{src:$('#cover').toDataURL('image/png'),sizes:'168x168',type:'image/png'}]});
     const h={play:()=>togglePlay(true),pause:()=>togglePlay(false),nexttrack:()=>next(),previoustrack:()=>prev()};
     for(const k in h)navigator.mediaSession.setActionHandler(k,h[k]);}catch(e){}
 }
@@ -516,12 +516,13 @@ $('#pairBtn').addEventListener('click',()=>{const on=!!KEY;$('#pairOff').hidden=
   $('#pairDlg').showModal();});
 $('#pairGo').addEventListener('click',async()=>{
   const v=$('#pairInput').value.trim(),m=/pair=([^&\s]{12,})/.exec(v)||/^(\S{12,})$/.exec(v);
-  if(!m){$('#pairErr').textContent='Paste the whole pairing link from Claude.';return;}
+  if(!m){$('#pairErr').textContent='Type your key or paste the whole pairing link.';return;}
   const prevKey=KEY;KEY=decodeURIComponent(m[1]);
   try{const r=await fetch('/api/sessions',{headers:{Authorization:'Bearer '+KEY}});if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(r.status===503&&j.error?j.error:'That link didn\'t work. Check that you copied all of it.');}
     pairWith(KEY);$('#pairDlg').close();toast('This device is paired');}
   catch(e){KEY=prevKey;$('#pairErr').textContent=e.message;}
 });
+addEventListener('hashchange',()=>{const m=/[#&]pair=([^&]{12,})/.exec(location.hash);if(!m)return;const k=decodeURIComponent(m[1]);history.replaceState(null,'',location.pathname);pairWith(k);toast('This device is paired');});
 $('#pairInput').addEventListener('input',()=>$('#pairErr').textContent='');
 $('#copyLink').addEventListener('click',()=>{const link=pairLink();navigator.clipboard.writeText(link).then(()=>toast('Pairing link copied'),()=>toast('Copy failed. Use the code instead.'));});
 $('#unpair').addEventListener('click',()=>{$('#pairDlg').close();unpair();toast('This device is unpaired');});

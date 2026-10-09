@@ -18,6 +18,8 @@ Pick the database you like. Each button copies Pulse to your own GitHub and Verc
 | **Supabase** | [![Deploy with Supabase](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkevinivarson-source%2Fpulse-for-claude-code&project-name=pulse&repository-name=pulse-for-claude-code&env=PULSE_KEY&envDescription=Make%20up%20a%20private%20key%20of%2012%20or%20more%20characters.%20It%20locks%20your%20player%20so%20only%20your%20devices%20can%20open%20it.&envLink=https%3A%2F%2Fgithub.com%2Fkevinivarson-source%2Fpulse-for-claude-code%23your-key&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22supabase%22%2C%22productSlug%22%3A%22supabase%22%2C%22protocol%22%3A%22storage%22%7D%5D) |
 | **Any other Postgres** | [![Deploy with your own Postgres](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkevinivarson-source%2Fpulse-for-claude-code&project-name=pulse&repository-name=pulse-for-claude-code&env=DATABASE_URL,PULSE_KEY&envDescription=Make%20up%20a%20private%20key%20of%2012%20or%20more%20characters.%20It%20locks%20your%20player%20so%20only%20your%20devices%20can%20open%20it.&envLink=https%3A%2F%2Fgithub.com%2Fkevinivarson-source%2Fpulse-for-claude-code%23your-key) |
 
+When Neon asks, pick the Free plan and you can switch **Auth** off. Pulse locks itself with your key and doesn't use Neon's login feature.
+
 During setup Vercel asks for one thing:
 
 <a id="your-key"></a>
