@@ -3,8 +3,11 @@
 import postgres from 'postgres';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-const url = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.STORAGE_URL || '';
+const url = process.env.DATABASE_URL || process.env.STORAGE_URL || process.env.POSTGRES_URL || '';
 const KEY = process.env.PULSE_KEY || '';
+// Optional: instead of the key itself, store only its fingerprint (SHA-256, 64 hex characters) as PULSE_KEY_SHA256.
+const KEY_SHA = /^[0-9a-f]{64}$/i.test(process.env.PULSE_KEY_SHA256 || '') ? Buffer.from(process.env.PULSE_KEY_SHA256, 'hex') : null;
+const hasKey = KEY.length >= 12 || KEY_SHA !== null;
 const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
 
 export const sql = globalThis.__pulseTestSql || postgres(url || 'postgres://unset@localhost/unset', {
@@ -30,7 +33,9 @@ export function ensure() {
 const digest = s => createHash('sha256').update(String(s ?? '')).digest();
 export function authed(req) {
   const m = /^Bearer (\S{12,})$/.exec(req.headers.authorization || '');
-  return Boolean(m && KEY.length >= 12 && timingSafeEqual(digest(m[1]), digest(KEY)));
+  if (!m) return false;
+  const d = digest(m[1]);
+  return (KEY.length >= 12 && timingSafeEqual(d, digest(KEY))) || (KEY_SHA !== null && timingSafeEqual(d, KEY_SHA));
 }
 
 // One letter per lane, used for each session's rhythm fingerprint (its cover art).
@@ -45,7 +50,7 @@ export const laneLetter = n =>
 export async function guard(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (!globalThis.__pulseTestSql && !url) { res.status(503).json({ error: 'Pulse has no database yet. Connect Neon, Supabase or any Postgres to this project in Vercel, then redeploy.' }); return false; }
-  if (KEY.length < 12) { res.status(503).json({ error: 'Pulse has no key yet. Add PULSE_KEY (12 or more characters) in your Vercel project settings, then redeploy.' }); return false; }
+  if (!hasKey) { res.status(503).json({ error: 'Pulse has no key yet. Add PULSE_KEY (12 or more characters) in your Vercel project settings, then redeploy.' }); return false; }
   if (!authed(req)) { res.status(401).json({ error: 'This device is not paired. Open your pairing link to connect it.' }); return false; }
   await ensure();
   return true;

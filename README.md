@@ -25,6 +25,8 @@ During setup Vercel asks for one thing:
 <a id="your-key"></a>
 **PULSE_KEY**: make up a private key of 12 or more characters, like a password. It locks your player so only your devices can open it.
 
+Prefer not to keep the key itself in Vercel? Set `PULSE_KEY_SHA256` to its SHA-256 fingerprint (64 hex characters) instead, for example from `printf '%s' 'your-key' | sha256sum`. Your devices still pair with the key itself.
+
 ## Start listening
 
 1. Open `https://<your-pulse>.vercel.app/#pair=<your PULSE_KEY>` on your computer. That device is now paired.
