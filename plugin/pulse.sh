@@ -15,10 +15,18 @@ tool=""; case "$code" in T|D) tool=$(field tool_name) ;; esac
 
 file=$(ls "$dir"/*-"$sid".pulse 2>/dev/null | head -1)
 if [ -z "$file" ]; then
-  proj=$(field cwd); proj=${proj//\\\\//}; proj=${proj//\\//}; proj=${proj%/}; proj=${proj##*/}
-  proj=${proj//[^A-Za-z0-9._-]/-}
-  file="$dir/$(date +%Y%m%d-%H%M)-$sid.pulse"
-  echo "$(date +%Y-%m-%dT%H:%M) ${proj:-session}" > "$file"
+  # Two hooks can fire at the same instant (for example start and a subagent). A short lock lets
+  # only one of them create the file, and the file appears whole, so no line is ever wiped.
+  lock="$dir/.$sid.lock"; i=0
+  until mkdir "$lock" 2>/dev/null; do i=$((i + 1)); [ "$i" -ge 20 ] && break; sleep 0.05; done
+  file=$(ls "$dir"/*-"$sid".pulse 2>/dev/null | head -1)
+  if [ -z "$file" ]; then
+    proj=$(field cwd); proj=${proj//\\\\//}; proj=${proj//\\//}; proj=${proj%/}; proj=${proj##*/}
+    proj=${proj//[^A-Za-z0-9._-]/-}
+    file="$dir/$(date +%Y%m%d-%H%M)-$sid.pulse"
+    echo "$(date +%Y-%m-%dT%H:%M) ${proj:-session}" > "$file.new$$" && mv "$file.new$$" "$file"
+  fi
+  rmdir "$lock" 2>/dev/null
 fi
 ms=$(date +%s%3N 2>/dev/null)
 case "$ms" in *N*|"") ms="$(date +%s)000" ;; esac

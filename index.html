@@ -18,21 +18,21 @@
 :root{
   --bg:#eceff4;--surface:#f8f9fb;--raise:#ffffff;--ink:#141a26;--muted:#5a6476;--line:#d4d9e2;--grid:#eef1f6;
   --l-prompt:#d9480f;--l-read:#1c6fd6;--l-write:#2b8a3e;--l-shell:#9c36b5;--l-web:#0b7285;--l-agent:#c2255c;--l-mcp:#e67700;--l-other:#748094;--l-turn:#141a26;
-  --live:#e03131;
+  --live:#e03131;--on-live:#ffffff;
   --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--f-body:"Instrument Sans","Segoe UI",system-ui,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#0b0f17;--surface:#121823;--raise:#18202d;--ink:#e8ebf1;--muted:#8d97aa;--line:#253042;--grid:#161e2a;
   --l-prompt:#ff8a4c;--l-read:#5aa2ff;--l-write:#5fd07a;--l-shell:#d27cf0;--l-web:#3cc6d8;--l-agent:#ff6b9a;--l-mcp:#ffb43d;--l-other:#98a3b6;--l-turn:#e8ebf1;
-  --live:#ff6b6b;color-scheme:dark}}
+  --live:#ff6b6b;--on-live:#0b0f17;color-scheme:dark}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);-webkit-tap-highlight-color:transparent}
 button,select,input{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--l-read);outline-offset:2px}
-.app{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:calc(10px + env(safe-area-inset-top,0px)) calc(32px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
+.app{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:calc(10px + env(safe-area-inset-top,0px)) calc(32px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 .bar{display:flex;align-items:center;gap:12px}
 .brand{font:800 22px/1 var(--f-display);letter-spacing:-.02em;display:flex;align-items:center;gap:8px;margin-right:auto}
 .beat{width:11px;height:11px;border-radius:50%;background:var(--l-prompt);animation:beat 1.6s ease-in-out infinite}
@@ -44,6 +44,12 @@ button{cursor:pointer}
 .live{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
 .pill{font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--live);border:1px solid currentColor;border-radius:999px;padding:4px 8px;display:inline-flex;align-items:center;gap:6px}
 .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;animation:beat 1.2s infinite}
+.btn.listening{background:var(--live);border-color:var(--live);color:var(--on-live);animation:glow 1.6s ease-out infinite}
+.btn.listening::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;animation:beat 1.2s infinite}
+.btn:disabled{opacity:.7;cursor:progress}
+@keyframes glow{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--live) 55%,transparent)}100%{box-shadow:0 0 0 10px color-mix(in srgb,var(--live) 0%,transparent)}}
+.status.wait{animation:fade 1.4s ease-in-out infinite}
+@keyframes fade{50%{opacity:.4}}
 .live div{flex:1;min-width:0}.live b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.live small{color:var(--muted)}
 .main{display:grid;gap:14px}
 @media (min-width:960px){.main{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:22px;align-items:start}.player{position:sticky;top:calc(12px + env(safe-area-inset-top,0px))}}
@@ -106,7 +112,7 @@ dialog p{margin:0 0 12px;color:var(--muted);font-size:14px}
 .sep{border:0;border-top:1px solid var(--line);margin:16px 0}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (max-width:520px){#roll{height:220px}#cover{width:64px;height:64px}}
-@media (prefers-reduced-motion:reduce){.beat,.pill::before{animation:none}}
+@media (prefers-reduced-motion:reduce){.beat,.pill::before,.btn.listening,.btn.listening::before,.status.wait{animation:none}}
 </style>
 </head>
 <body>
@@ -120,7 +126,7 @@ dialog p{margin:0 0 12px;color:var(--muted);font-size:14px}
   <section class="live" id="liveCard" hidden>
     <span class="pill">Live</span>
     <div><b id="liveTitle"></b><small id="liveMeta"></small></div>
-    <button class="btn solid" id="liveBtn" type="button">Listen live</button>
+    <button class="btn solid" id="liveBtn" type="button" aria-pressed="false">Listen live</button>
   </section>
 
   <div class="main">
@@ -234,7 +240,16 @@ function laneOf(n){
 const letterOf=n=>({read:'r',write:'w',shell:'s',web:'b',agent:'a',mcp:'m',other:'o'})[laneOf(n)];
 function fmt(ms){ms=Math.max(0,Math.round(ms/1000));const h=Math.floor(ms/3600),m=Math.floor(ms%3600/60),s=ms%60;return h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;}
 const fmtGap=ms=>ms<60000?(ms/1000).toFixed(ms<10000?1:0)+' s':fmt(ms);
-const pretty=p=>String(p||'Session').replace(/[-_.]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+/* Folder name → track name. Date and hash stamps are noise (Claude's scratch folders look like
+   "scratch-2026-10-09-f5717f"), so they are trimmed; the track title already shows when it ran. */
+function pretty(p){
+  let s=String(p||'').trim()
+    .replace(/[-_. ]*(?:19|20)\d\d[-_.]?\d\d[-_.]?\d\d(?:[-_.t]?\d\d[-_.]?\d\d(?:[-_.]?\d\d)?)?(?:[-_. ]+[0-9a-f]{4,})?$/i,'')
+    .replace(/[-_. ]+(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,}$/i,'')
+    .replace(/[-_.]+/g,' ').trim();
+  if(!s)s='Session';else if(/^scratch(pad)?$/i.test(s))s='Scratch session';
+  return s.replace(/\b\w/g,c=>c.toUpperCase());
+}
 function when(t){const d=new Date(t),n=new Date(),hm=d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
   if(d.toDateString()===n.toDateString())return'Today '+hm;
   if(n-d<6*864e5)return d.toLocaleDateString([], {weekday:'short'})+' '+hm;
@@ -266,6 +281,8 @@ let sessions=[], skew=0, lib=store.get('pulse.lib',{fav:[],lists:[]}), view=stor
 let queue=[], qi=-1, from='All sessions', cur=null, M=null, rowsCache=new Map();
 let pos=-400, idx=0, playing=false, muted=false, speed=1, capSel=3, cap=3, liveMode=false, repeat=0, shuffle=false, played=new Set();
 const isLive=s=>s&&!s.example&&!s.ended&&(Date.now()+skew-s.last_at)<20*60e3;
+/* Paired, but the first answer from the player hasn't arrived yet (a free database can take ~20 s to wake). */
+let connecting=false, connectSince=0, connectNote=null, retryT=null, refreshing=false;
 
 /* ---------- model ---------- */
 function build(rows){
@@ -284,7 +301,7 @@ function retime(m=M){
 }
 function realAt(p){const ev=M.ev;if(p<=0)return 0;let lo=0,hi=ev.length-1;while(lo<hi){const k=(lo+hi+1)>>1;if(ev[k].x<=p)lo=k;else hi=k-1;}
   const a=ev[lo],b=ev[lo+1];if(!b)return a.r+(liveMode?p-a.x:0);const f=b.x>a.x?(p-a.x)/(b.x-a.x):0;return a.r+f*(b.r-a.r);}
-function seek(p){pos=Math.max(-400,Math.min(p,liveMode?Infinity:M.total));idx=M.ev.findIndex(e=>e.x>pos);if(idx<0)idx=M.ev.length;}
+function seek(p){if(!M)return;pos=Math.max(-400,Math.min(p,liveMode?Infinity:M.total));idx=M.ev.findIndex(e=>e.x>pos);if(idx<0)idx=M.ev.length;}
 
 /* ---------- sound ---------- */
 let ac=null,master=null,noiseBuf=null;
@@ -352,6 +369,17 @@ function drawRoll(now){
   LANES.forEach((l,i)=>{const cy=top+i*lh+lh/2;g.fillStyle=C[l.id];rr(g,0,cy-4,8,8,2);g.fill();g.fillStyle=C.muted;g.fillText(l.label,14,cy);});
   g.textBaseline='alphabetic';
 }
+/* While connecting: empty lanes and a soft beat walking down them, so the player never looks frozen. */
+function drawWaiting(now){
+  const g=rg,{W,H,gut,top,lh}=geo(),k=reduce?-1:Math.floor(now/260)%LANES.length,cx=gut+(W-gut)/2;
+  g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle=C.bg;g.fillRect(0,0,W,H);
+  LANES.forEach((l,i)=>{if(i%2===0){g.fillStyle=C.grid;g.fillRect(gut,top+i*lh,W-gut,lh);}});
+  g.font=`500 ${W<520?11:12.5}px ${C.body}`;g.textAlign='left';g.textBaseline='middle';
+  LANES.forEach((l,i)=>{const cy=top+i*lh+lh/2;g.globalAlpha=i===k?1:.35;g.fillStyle=C[l.id];rr(g,0,cy-4,8,8,2);g.fill();g.globalAlpha=1;g.fillStyle=C.muted;g.fillText(l.label,14,cy);});
+  g.textAlign='center';g.font=`600 15px ${C.body}`;g.fillStyle=C.muted;g.fillText(navigator.onLine?'Connecting to your player…':'You are offline',cx,top+(H-top)/2);
+  g.textBaseline='alphabetic';
+  const m=mg,MW=mini.clientWidth,MH=mini.clientHeight;m.setTransform(dpr,0,0,dpr,0,0);m.fillStyle=C.grid;m.fillRect(0,0,MW,MH);
+}
 function drawMini(){
   const g=mg,W=mini.clientWidth,H=mini.clientHeight,rh=(H-6)/LANES.length,T=Math.max(liveMode?Math.max(M.total,pos):M.total,1),X=ms=>2+ms/T*(W-4);
   g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle=C.grid;g.fillRect(0,0,W,H);
@@ -382,13 +410,13 @@ function ui(now){
   tempo.textContent=`${n} actions/min`;
 }
 function setPlayIcon(){$('#playIcon').setAttribute('d',playing?'M6 4h4v16H6zM14 4h4v16h-4z':'M7 4.5v15l13-7.5z');$('#play').setAttribute('aria-label',playing?'Pause':'Play');
-  if('mediaSession' in navigator)navigator.mediaSession.playbackState=playing?'playing':'paused';}
+  if('mediaSession' in navigator)navigator.mediaSession.playbackState=playing?'playing':'paused';renderLive();}
 function setNP(){
   if(!cur)return;$('#npTitle').textContent=titleOf(cur);$('#npFrom').textContent=(liveMode?'Live now · ':'Playing from ')+from;
   const prompts=M?M.ev.filter(e=>e.k==='U').length:0;
   $('#npMeta').textContent=`${fmt((M?M.realTotal:cur.last_at-cur.started_at))} · ${cur.calls} tool calls · ${prompts} prompts`;
   const fav=lib.fav.includes(cur.id);$('#favBtn').setAttribute('aria-pressed',String(fav));$('#favBtn').setAttribute('aria-label',fav?'Remove from favourites':'Add to favourites');
-  drawCover($('#cover'),cur);media();
+  drawCover($('#cover'),cur);media();renderLive();
 }
 function media(){
   if(!('mediaSession' in navigator)||!cur)return;
@@ -404,12 +432,13 @@ function frame(now){
     while(idx<M.ev.length&&M.ev[idx].x<=pos){if(fired<8)fire(M.ev[idx]);fired++;idx++;}
     if(!liveMode&&pos>=M.total+1200)onEnd();
   }
-  if(M){drawRoll(now);drawMini();ui(now);}
+  if(connecting)drawWaiting(now);else if(M){drawRoll(now);drawMini();ui(now);}
   requestAnimationFrame(frame);
 }
 function togglePlay(force){
   audio();if(!M)return;const want=force===undefined?!playing:force;
   if(want&&!liveMode&&pos>=M.total)seek(-400);
+  if(want&&!playing&&liveMode){ripples=[];seek(Date.now()+skew-M.ev[0].t);}/* like live radio: resuming jumps back to now */
   playing=want;setPlayIcon();
 }
 
@@ -436,8 +465,8 @@ function pickNext(){
     return left[Math.floor(Math.random()*left.length)];}
   if(qi+1<queue.length)return qi+1;return repeat===1?0:-1;
 }
-function next(){const i=pickNext();if(i<0){playing=false;setPlayIcon();seek(M?M.total:0);return;}qi=i;const s=findS(queue[i]);if(s)load(s);}
-function prev(){if(pos>3000||qi<=0){seek(-400);return;}qi--;const s=findS(queue[qi]);if(s)load(s);}
+function next(){if(connecting)return;const i=pickNext();if(i<0){playing=false;setPlayIcon();seek(M?M.total:0);return;}qi=i;const s=findS(queue[i]);if(s)load(s);}
+function prev(){if(connecting)return;if(pos>3000||qi<=0){seek(-400);return;}qi--;const s=findS(queue[qi]);if(s)load(s);}
 function onEnd(){if(repeat===2){seek(-400);played.delete(cur.id);return;}next();}
 const findS=id=>id==='example'?SAMPLE.s:sessions.find(s=>s.id===id);
 
@@ -447,23 +476,24 @@ function viewItems(v){
   if(v==='fav')a=a.filter(s=>lib.fav.includes(s.id));
   else if(v==='today'){const d=new Date().toDateString();a=a.filter(s=>new Date(s.started_at).toDateString()===d);}
   else if(v==='longest')a=a.sort((x,y)=>(y.last_at-y.started_at)-(x.last_at-x.started_at)).slice(0,25);
-  else if(v.startsWith('p:'))a=a.filter(s=>s.project===v.slice(2));
+  else if(v.startsWith('p:'))a=a.filter(s=>pretty(s.project)===v.slice(2));
   else if(v.startsWith('l:')){const l=lib.lists.find(l=>l.id===v.slice(2));a=l?l.items.map(findS).filter(Boolean):[];}
   return a;
 }
 const allSessions=()=>KEY?sessions:[SAMPLE.s];
 function viewName(v){if(v==='all')return'All sessions';if(v==='fav')return'Favourites';if(v==='today')return'Today';if(v==='longest')return'Longest sessions';
-  if(v.startsWith('p:'))return pretty(v.slice(2));if(v.startsWith('l:'))return(lib.lists.find(l=>l.id===v.slice(2))||{}).name||'Playlist';return'All sessions';}
+  if(v.startsWith('p:'))return v.slice(2);if(v.startsWith('l:'))return(lib.lists.find(l=>l.id===v.slice(2))||{}).name||'Playlist';return'All sessions';}
 function renderChips(){
-  const counts={};allSessions().forEach(s=>counts[s.project]=(counts[s.project]||0)+1);
+  const counts={};allSessions().forEach(s=>{const n=pretty(s.project);counts[n]=(counts[n]||0)+1;});
   const projects=KEY?Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,8):[];
-  const chips=[['all','All'],['fav','Favourites'],['today','Today'],['longest','Longest'],...lib.lists.map(l=>['l:'+l.id,l.name]),...projects.map(p=>['p:'+p,pretty(p)])];
+  const chips=[['all','All'],['fav','Favourites'],['today','Today'],['longest','Longest'],...lib.lists.map(l=>['l:'+l.id,l.name]),...projects.map(p=>['p:'+p,p])];
   if(!chips.some(c=>c[0]===view)&&(!KEY||sessions.length))view='all';
   $('#chips').innerHTML=chips.map(([k,n])=>`<button class="chip" type="button" data-v="${esc(k)}" aria-pressed="${k===view}">${esc(n)}</button>`).join('')+`<button class="chip" type="button" data-new="1">+ New playlist</button>`;
 }
 function renderTracks(){
   const items=viewItems(view);$('#listTitle').textContent=viewName(view);
   const act=$('#listAction');act.hidden=!view.startsWith('l:');act.textContent='Delete playlist';act.dataset.armed='';
+  if(connecting){$('#tracks').innerHTML='<li><p class="empty">Connecting to your sessions…</p></li>';return;}
   if(!items.length){$('#tracks').innerHTML=`<li><p class="empty">${view==='fav'?'Tap the heart on any session to keep it here.':view.startsWith('l:')?'Add sessions with the + button next to any session.':KEY?'Your sessions appear here as soon as Claude Code starts working.':'Pair this device to see your own sessions.'}</p></li>`;return;}
   $('#tracks').innerHTML=items.map(s=>{const fav=lib.fav.includes(s.id),on=cur&&cur.id===s.id;
     return `<li class="${on?'on':''}"><button class="row" type="button" data-play="${esc(s.id)}"><canvas width="88" height="88" data-cover="${esc(s.id)}"></canvas><span class="rt"><b>${esc(titleOf(s))}${isLive(s)?'<span class="pill">Live</span>':''}</b><small>${fmt(s.last_at-s.started_at)} · ${s.calls} tool calls</small></span></button>
@@ -472,8 +502,12 @@ function renderTracks(){
   document.querySelectorAll('canvas[data-cover]').forEach(cv=>{const s=findS(cv.dataset.cover);if(s)drawCover(cv,s);});
 }
 function renderLive(){
-  const l=KEY?sessions.find(isLive):null,card=$('#liveCard');card.hidden=!l;if(!l)return;
-  card.dataset.id=l.id;$('#liveTitle').textContent=titleOf(l);$('#liveMeta').textContent=`${l.calls} tool calls so far`+(cur&&cur.id===l.id&&liveMode?' · you are listening':'');
+  const l=KEY&&!connecting?sessions.find(isLive):null,card=$('#liveCard'),btn=$('#liveBtn');card.hidden=!l;if(!l)return;
+  const on=!!(cur&&cur.id===l.id&&liveMode&&playing);
+  card.dataset.id=l.id;$('#liveTitle').textContent=titleOf(l);$('#liveMeta').textContent=`${(on?cur:l).calls} tool calls so far`;
+  if(btn.dataset.busy)return;
+  btn.classList.toggle('listening',on);btn.setAttribute('aria-pressed',String(on));btn.textContent=on?'Listening live':'Listen live';
+  btn.title=on?'Tap to pause':'';
 }
 function renderLib(){renderChips();renderTracks();renderLive();}
 let saveT;function saveLib(){store.set('pulse.lib',lib);renderLib();if(cur)setNP();if(!KEY)return;clearTimeout(saveT);
@@ -481,14 +515,34 @@ let saveT;function saveLib(){store.set('pulse.lib',lib);renderLib();if(cur)setNP
 function toggleFav(id){const i=lib.fav.indexOf(id);if(i>=0)lib.fav.splice(i,1);else lib.fav.unshift(id);saveLib();}
 
 /* ---------- cloud sync ---------- */
-function status(){statusEl.textContent=!KEY?'Example session':navigator.onLine?(liveMode?'Live':'Synced'):'Offline';}
+function status(){statusEl.textContent=!KEY?'Example session':!navigator.onLine?'Offline':connecting?'Connecting…':liveMode?'Live':'Synced';statusEl.classList.toggle('wait',connecting&&navigator.onLine);}
+function setConnecting(on){
+  connecting=on;clearTimeout(connectNote);clearTimeout(retryT);
+  if(on){
+    connectSince=Date.now();cur=null;M=null;playing=false;liveMode=false;ripples=[];setPlayIcon();
+    $('#npFrom').textContent='Your sessions';$('#npTitle').textContent='Connecting…';$('#npMeta').textContent='Waking up your database';
+    $('#favBtn').hidden=true;drawCover($('#cover'),{rhythm:''});tNow.textContent=tEnd.textContent='0:00';tempo.textContent='';
+    connectNote=setTimeout(()=>{if(connecting)$('#npMeta').textContent='Still waking up. After a quiet spell the first load can take half a minute.';},6000);
+  }else $('#favBtn').hidden=false;
+  status();renderLib();
+}
 async function refresh(){
-  if(!KEY||document.hidden)return;
+  if(!KEY||refreshing||(document.hidden&&!connecting))return;refreshing=true;
   try{const d=await api('sessions');skew=d.now-Date.now();sessions=d.sessions;
+    const woke=connecting;if(woke)setConnecting(false);
     if(cur&&!cur.example){const fresh=sessions.find(s=>s.id===cur.id);if(fresh)Object.assign(cur,fresh);}
     renderLib();status();
-    if(!cur&&sessions.length){const s=viewItems(view)[0]||sessions[0];queue=viewItems(view).map(x=>x.id);qi=0;from=viewName(view);load(s,{autoplay:false});}
-  }catch(e){status();}
+    if(sessions.length&&(!cur||(cur.example&&!playing))){const s=viewItems(view)[0]||sessions[0];queue=viewItems(view).map(x=>x.id);qi=0;from=viewName(view);load(s,{autoplay:false});}
+    else if(!cur)load(SAMPLE.s,{autoplay:false});/* nothing recorded yet: keep the example on screen */
+    if(woke)syncLib();
+  }catch(e){
+    if(connecting&&KEY){
+      if(e.message==='setup'){setConnecting(false);load(SAMPLE.s,{autoplay:false});}
+      else{const long=Date.now()-connectSince>45000;retryT=setTimeout(refresh,long?8000:2500);
+        if(long)$('#npMeta').textContent='Can\'t reach your player yet. Pulse keeps trying.';}
+    }
+    status();
+  }finally{refreshing=false;}
 }
 async function syncLib(){if(!KEY)return;try{const d=await api('library');lib={fav:[],lists:[],...d.data};store.set('pulse.lib',lib);renderLib();if(cur)setNP();}catch(e){}}
 let following=false;
@@ -507,8 +561,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();
 addEventListener('online',status);addEventListener('offline',status);
 
 /* ---------- pairing UI ---------- */
-function unpair(){KEY=null;try{localStorage.removeItem('pulse.key')}catch(e){}sessions=[];rowsCache.clear();status();renderLib();$('#pairBtn').textContent='Pair device';load(SAMPLE.s,{autoplay:false});}
-function pairWith(k){KEY=k;store.set('pulse.key',k);$('#pairBtn').textContent='Devices';cur=null;refresh();syncLib();}
+function unpair(){KEY=null;try{localStorage.removeItem('pulse.key')}catch(e){}sessions=[];rowsCache.clear();if(connecting)setConnecting(false);status();renderLib();$('#pairBtn').textContent='Pair device';load(SAMPLE.s,{autoplay:false});}
+function pairWith(k){KEY=k;store.set('pulse.key',k);$('#pairBtn').textContent='Devices';sessions=[];setConnecting(true);refresh();}
 $('#pairBtn').addEventListener('click',()=>{const on=!!KEY;$('#pairOff').hidden=on;$('#pairOn').hidden=!on;$('#pairErr').textContent='';
   if(on){const link=pairLink();const box=$('#qr');box.textContent='Loading code…';
     const draw=()=>{try{const q=qrcode(0,'M');q.addData(link);q.make();box.innerHTML=q.createImgTag(6,0);box.querySelector('img').alt='Pairing code';}catch(e){box.textContent='Use "Copy pairing link" instead.';}};
@@ -560,11 +614,17 @@ $('#next').addEventListener('click',()=>next());
 $('#prev').addEventListener('click',()=>prev());
 $('#shuf').addEventListener('click',e=>{shuffle=!shuffle;played=new Set(cur?[cur.id]:[]);e.currentTarget.setAttribute('aria-pressed',String(shuffle));store.set('pulse.shuffle',shuffle);});
 $('#rep').addEventListener('click',e=>{repeat=(repeat+1)%3;const b=e.currentTarget;b.setAttribute('aria-pressed',String(repeat>0));$('#repOne').hidden=repeat!==2;b.setAttribute('aria-label',['Repeat off','Repeat all','Repeat one'][repeat]);store.set('pulse.repeat',repeat);});
-$('#liveBtn').addEventListener('click',()=>{const s=sessions.find(x=>x.id===$('#liveCard').dataset.id);if(!s)return;queue=[s.id];qi=0;from=pretty(s.project);rowsCache.delete(s.id);load(s,{live:true}).then(()=>{status();renderLive();});});
+$('#liveBtn').addEventListener('click',async e=>{
+  const btn=e.currentTarget,s=sessions.find(x=>x.id===$('#liveCard').dataset.id);if(!s||btn.dataset.busy)return;
+  if(cur&&cur.id===s.id&&liveMode&&playing){togglePlay(false);return;}
+  btn.dataset.busy='1';btn.disabled=true;btn.classList.remove('listening');btn.textContent='Tuning in…';
+  queue=[s.id];qi=0;from=pretty(s.project);rowsCache.delete(s.id);
+  try{await load(s,{live:true});}finally{delete btn.dataset.busy;btn.disabled=false;status();renderLive();}
+});
 $('#speed').addEventListener('change',e=>speed=+e.target.value);
 $('#cap').addEventListener('change',e=>{capSel=+e.target.value;if(liveMode||!M)return;const r=realAt(pos);cap=capSel;retime();let p=0;for(const ev of M.ev){if(ev.r<=r)p=ev.x;else break;}seek(p);});
 $('#mute').addEventListener('click',e=>{muted=!muted;e.currentTarget.textContent=muted?'Sound off':'Sound on';e.currentTarget.setAttribute('aria-pressed',String(muted));});
-let drag=false;const miniSeek=ev=>{const r=mini.getBoundingClientRect(),T=liveMode?Math.max(M.total,pos):M.total;if(liveMode){liveMode=false;cap=capSel;retime();setNP();status();}seek((ev.clientX-r.left)/r.width*T);};
+let drag=false;const miniSeek=ev=>{if(!M)return;const r=mini.getBoundingClientRect(),T=liveMode?Math.max(M.total,pos):M.total;if(liveMode){liveMode=false;cap=capSel;retime();setNP();status();}seek((ev.clientX-r.left)/r.width*T);};
 mini.addEventListener('pointerdown',e=>{drag=true;mini.setPointerCapture(e.pointerId);miniSeek(e);});
 mini.addEventListener('pointermove',e=>{if(drag)miniSeek(e);});mini.addEventListener('pointerup',()=>drag=false);
 document.addEventListener('keydown',e=>{if(e.target.closest('input,select,textarea,dialog'))return;
@@ -577,8 +637,7 @@ readColors();size();new ResizeObserver(size).observe(roll);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors();renderTracks();if(cur)drawCover($('#cover'),cur);});
 document.fonts&&document.fonts.ready.then(readColors);
 $('#pairBtn').textContent=KEY?'Devices':'Pair device';
-load(SAMPLE.s,{autoplay:false});
-if(KEY){cur=null;refresh();syncLib();}else{queue=['example'];qi=0;renderLib();}
+if(KEY){setConnecting(true);refresh();}else{load(SAMPLE.s,{autoplay:false});queue=['example'];qi=0;renderLib();}
 status();requestAnimationFrame(frame);
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 })();
