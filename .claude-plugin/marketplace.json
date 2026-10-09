@@ -1,6 +1,9 @@
 {
   "name": "pulse-for-claude-code",
-  "owner": { "name": "Kevin Ivarson" },
+  "description": "Pulse: hear and see Claude Code work. Every session streamed to your own player as rhythm, graphics and sound.",
+  "owner": {
+    "name": "Kevin Ivarson"
+  },
   "plugins": [
     {
       "name": "pulse",

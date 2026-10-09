@@ -26,9 +26,18 @@ During setup Vercel asks for one thing:
 ## Start listening
 
 1. Open `https://<your-pulse>.vercel.app/#pair=<your PULSE_KEY>` on your computer. That device is now paired.
-2. Tap **Pair device → Copy Claude Code setup** and paste it into Claude Code. Claude installs the plugin and connects it for you.
-3. Restart Claude Code and start working. Your session appears live in the player.
-4. On your phone, open **Pair device** on the computer and scan the code, then add Pulse to your home screen.
+2. Install the plugin in Claude Code:
+
+   ```
+   /plugin install pulse --marketplace kevinivarson-source/pulse-for-claude-code
+   ```
+
+   On Claude Code older than 2.1.275, run `/plugin marketplace add kevinivarson-source/pulse-for-claude-code` first, then `/plugin install pulse@pulse-for-claude-code`.
+3. Connect it to your player: in Pulse, open **Pair device → Copy Claude Code setup** and paste it into Claude Code. It writes `~/.claude/pulse/cloud` with your player's address and key.
+4. Restart Claude Code and start working. Your session appears live in the player.
+5. On your phone, open **Pair device** on the computer and scan the code, then add Pulse to your home screen.
+
+**Windows:** the plugin's hooks run in Bash, so install [Git for Windows](https://git-scm.com/downloads/win) (Claude Code recommends it on Windows anyway).
 
 ## What you get
 
