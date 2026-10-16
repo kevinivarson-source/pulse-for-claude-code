@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0e131c" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#eceff4" media="(prefers-color-scheme: light)">
-<meta name="description" content="Hear and see Claude Code work. Every session played back as rhythm, graphics and sound, live on any device.">
+<meta name="description" content="Hear and see Claude Code work. Sessions played back as tracks of rhythm, graphics and sound. Tap play, no setup.">
+<meta property="og:title" content="Pulse for Claude Code">
+<meta property="og:description" content="Claude Code sessions as music. Tap play, no setup.">
+<meta property="og:image" content="/icon-512.png">
 <title>Pulse for Claude Code</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -111,16 +114,25 @@ dialog p{margin:0 0 12px;color:var(--muted);font-size:14px}
 .foot a{color:inherit;text-underline-offset:3px}
 .sep{border:0;border-top:1px solid var(--line);margin:16px 0}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+a.btn{text-decoration:none;justify-content:center}
+.np-act{display:flex;align-items:center}
+.play.cue{animation:cue 1.4s ease-out infinite}
+@keyframes cue{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ink) 45%,transparent)}100%{box-shadow:0 0 0 16px color-mix(in srgb,var(--ink) 0%,transparent)}}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--grid);border:1px solid var(--line);border-radius:999px;padding:3px;gap:3px}
+.seg button{border:0;background:none;border-radius:999px;padding:7px 10px;font-weight:600;font-size:13.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .14)}
+.note{margin:2px 4px 0;font-size:12.5px;color:var(--muted)}
+.lbl{display:grid;gap:4px;font-size:13px;color:var(--muted)}
 @media (max-width:520px){#roll{height:220px}#cover{width:64px;height:64px}}
-@media (prefers-reduced-motion:reduce){.beat,.pill::before,.btn.listening,.btn.listening::before,.status.wait{animation:none}}
+@media (prefers-reduced-motion:reduce){.beat,.pill::before,.btn.listening,.btn.listening::before,.status.wait,.play.cue{animation:none}}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="bar">
     <div class="brand"><span class="beat" aria-hidden="true"></span>Pulse</div>
-    <span class="status" id="status">Example session</span>
-    <button class="btn" id="pairBtn" type="button">Pair device</button>
+    <span class="status" id="status"></span>
+    <button class="btn" id="pairBtn" type="button">Record your own</button>
   </header>
 
   <section class="live" id="liveCard" hidden>
@@ -134,33 +146,42 @@ dialog p{margin:0 0 12px;color:var(--muted);font-size:14px}
       <div class="np">
         <canvas id="cover" width="168" height="168" aria-hidden="true"></canvas>
         <div style="min-width:0">
-          <p class="eyebrow" id="npFrom">Playing from All sessions</p>
-          <h1 id="npTitle">Sample session</h1>
+          <p class="eyebrow" id="npFrom">Pulse</p>
+          <h1 id="npTitle">Loading…</h1>
           <p class="meta" id="npMeta"></p>
         </div>
-        <button class="icon heart" id="favBtn" type="button" aria-pressed="false" aria-label="Add to favourites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20s-7-4.4-9.2-9C1.4 7.8 3.3 4.5 6.6 4.5c2 0 3.6 1.1 5.4 3.2 1.8-2.1 3.4-3.2 5.4-3.2 3.3 0 5.2 3.3 3.8 6.5C19 15.6 12 20 12 20z"/></svg></button>
+        <div class="np-act">
+          <button class="icon" id="shareTrack" type="button" aria-label="Share this track" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></button>
+          <button class="icon heart" id="favBtn" type="button" aria-pressed="false" aria-label="Add to favourites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20s-7-4.4-9.2-9C1.4 7.8 3.3 4.5 6.6 4.5c2 0 3.6 1.1 5.4 3.2 1.8-2.1 3.4-3.2 5.4-3.2 3.3 0 5.2 3.3 3.8 6.5C19 15.6 12 20 12 20z"/></svg></button>
+        </div>
       </div>
       <canvas id="roll" role="img" aria-label="Piano roll of Claude's actions"></canvas>
-      <canvas id="mini" aria-label="Whole session overview. Tap to jump."></canvas>
-      <div class="time"><span id="tNow">0:00</span><span id="tempo">0 actions/min</span><span id="tEnd">0:00</span></div>
+      <canvas id="mini" aria-label="Whole track overview. Tap to jump."></canvas>
+      <div class="time"><span id="tNow">0:00</span><span id="tempo"></span><span id="tEnd">0:00</span></div>
       <div class="transport">
         <button class="icon" id="shuf" type="button" aria-pressed="false" aria-label="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3c4 0 6 10 10 10h4M3 17h3c1.6 0 2.8-1.6 3.8-3.6M13.2 9.6C14.2 8 15.3 7 17 7h3M17 4l3 3-3 3M17 14l3 3-3 3"/></svg></button>
-        <button class="icon" id="prev" type="button" aria-label="Previous session"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="icon" id="prev" type="button" aria-label="Previous"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
         <button class="play" id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" fill="currentColor"><path id="playIcon" d="M7 4.5v15l13-7.5z"/></svg></button>
-        <button class="icon" id="next" type="button" aria-label="Next session"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+        <button class="icon" id="next" type="button" aria-label="Next"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
         <button class="icon" id="rep" type="button" aria-pressed="false" aria-label="Repeat off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4"/></svg><span class="badge" id="repOne" hidden>1</span></button>
       </div>
       <div class="opts">
         <label for="speed">Speed <select id="speed"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label>
-        <label for="cap">Pauses <select id="cap"><option value="1">Cut to 1 s</option><option value="3" selected>Cut to 3 s</option><option value="10">Cut to 10 s</option><option value="0">Real length</option></select></label>
+        <label for="cap" id="capLbl" hidden>Pauses <select id="cap"><option value="1">Cut to 1 s</option><option value="3" selected>Cut to 3 s</option><option value="10">Cut to 10 s</option><option value="0">Real length</option></select></label>
         <button class="small" id="mute" type="button" aria-pressed="false">Sound on</button>
+        <button class="small" id="rawBtn" type="button" hidden>Full recording</button>
       </div>
     </section>
 
     <section class="library" aria-label="Library">
+      <div class="seg" role="group" aria-label="Show">
+        <button type="button" data-mode="tracks" aria-pressed="true">Tracks</button>
+        <button type="button" data-mode="raw" aria-pressed="false">Raw recordings</button>
+      </div>
       <div class="chips" id="chips" role="toolbar" aria-label="Playlists"></div>
-      <div class="listhead"><h2 id="listTitle">All sessions</h2><button class="small" id="listAction" type="button" hidden></button></div>
+      <div class="listhead"><h2 id="listTitle">Starter pack</h2><button class="small" id="listAction" type="button" hidden></button></div>
       <ul id="tracks"></ul>
+      <p class="note" id="listNote"></p>
     </section>
   </div>
   <footer class="foot">
@@ -171,12 +192,16 @@ dialog p{margin:0 0 12px;color:var(--muted);font-size:14px}
 
 <dialog id="pairDlg">
   <div id="pairOff">
-    <h3>Pair this device</h3>
-    <p>Type the key you made up during setup, or paste a pairing link. You can also scan the code shown on a device that's already paired.</p>
+    <h3>Record your own</h3>
+    <p>Pulse can turn your own Claude Code sessions into tracks. Set up your own free player in one click, then pair this device with the key you chose.</p>
+    <a class="btn solid" href="https://github.com/kevinivarson-source/pulse-for-claude-code#record-your-own-in-one-click" target="_blank" rel="noopener">Get your own player</a>
+    <hr class="sep">
+    <h3>Already set up?</h3>
+    <p>On your own player, type your key or paste a pairing link. You can also scan the code shown on a device that's already paired.</p>
     <div class="stack">
-      <input class="field" id="pairInput" placeholder="Your key or pairing link" autocomplete="off" aria-label="Pairing link">
+      <input class="field" id="pairInput" placeholder="Your key or pairing link" autocomplete="off" aria-label="Your key or pairing link">
       <p class="err" id="pairErr"></p>
-      <button class="btn solid" id="pairGo" type="button">Pair</button>
+      <button class="btn" id="pairGo" type="button">Pair</button>
     </div>
   </div>
   <div id="pairOn" hidden>
@@ -206,17 +231,32 @@ dialog p{margin:0 0 12px;color:var(--muted);font-size:14px}
   <form method="dialog" style="margin-top:10px;text-align:right"><button class="small">Done</button></form>
 </dialog>
 
-<script>
-(()=>{
-'use strict';
-const $=s=>document.querySelector(s);
-const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2200)};
+<dialog id="shareDlg">
+  <h3>Share this track</h3>
+  <p>Anyone with the link can play it, no account needed. Only the rhythm travels: no project names, prompts or code.</p>
+  <div class="stack">
+    <label class="lbl">Title<input class="field" id="shTitle" maxlength="60" autocomplete="off"></label>
+    <label class="lbl">Your name (optional)<input class="field" id="shFrom" maxlength="40" autocomplete="off" placeholder="Shown as who shared it"></label>
+    <p class="err" id="shErr"></p>
+    <button class="btn solid" id="shGo" type="button" disabled>Share link</button>
+    <button class="btn" id="shCopy" type="button" disabled>Copy link</button>
+  </div>
+  <form method="dialog" style="margin-top:10px;text-align:right"><button class="small">Close</button></form>
+</dialog>
 
-/* ---------- pairing ---------- */
-const pairMatch=/[#&]pair=([^&]{12,})/.exec(location.hash);
-if(pairMatch){store.set('pulse.key',decodeURIComponent(pairMatch[1]));history.replaceState(null,'',location.pathname);}
+<script type="module">
+import { AUTO, RULES_VERSION, stepMs, laneOf, letterOf, parsePulse, sortRows, cut, trackRows, encodeTrack, decodeTrack } from '/tracks.js';
+
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2400)};
+
+/* ---------- links: #pair=<key> pairs this device, #t=<track> opens a shared track ---------- */
+const PAIR_RE=/[#&]pair=([^&]{12,})/,TRACK_RE=/[#&]t=([01]\.[A-Za-z0-9_-]+)/;
+const pairMatch=PAIR_RE.exec(location.hash),sharedMatch=TRACK_RE.exec(location.hash);
+if(pairMatch)store.set('pulse.key',decodeURIComponent(pairMatch[1]));
+if(pairMatch||sharedMatch)history.replaceState(null,'',location.pathname);
 let KEY=store.get('pulse.key',null);
 async function api(path,opt={}){
   const r=await fetch('/api/'+path,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+KEY}});
@@ -232,16 +272,10 @@ const LI={};LANES.forEach((l,i)=>LI[l.id]=i);
 const LETTER={r:'read',w:'write',s:'shell',b:'web',a:'agent',m:'mcp',o:'other'};
 const SCALE=[0,0,2,4,7,9,12,14,0];
 const freq=l=>220*Math.pow(2,SCALE[LI[l]]/12);
-function laneOf(n){
-  if(/^mcp__/.test(n))return'mcp';if(/^(Read|Glob|Grep|LS|NotebookRead)$/.test(n))return'read';
-  if(/^(Edit|Write|MultiEdit|NotebookEdit)$/.test(n))return'write';if(/^(Bash|BashOutput|KillShell|KillBash|PowerShell|Monitor)$/.test(n))return'shell';
-  if(/^(WebFetch|WebSearch)$/.test(n))return'web';if(/^(Task|Agent)$/.test(n))return'agent';return'other';
-}
-const letterOf=n=>({read:'r',write:'w',shell:'s',web:'b',agent:'a',mcp:'m',other:'o'})[laneOf(n)];
 function fmt(ms){ms=Math.max(0,Math.round(ms/1000));const h=Math.floor(ms/3600),m=Math.floor(ms%3600/60),s=ms%60;return h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;}
 const fmtGap=ms=>ms<60000?(ms/1000).toFixed(ms<10000?1:0)+' s':fmt(ms);
-/* Folder name → track name. Date and hash stamps are noise (Claude's scratch folders look like
-   "scratch-2026-10-09-f5717f"), so they are trimmed; the track title already shows when it ran. */
+/* Folder name → album name. Date and hash stamps are noise (Claude's scratch folders look like
+   "scratch-2026-10-09-f5717f"), so they are trimmed; the title already shows when it ran. */
 function pretty(p){
   let s=String(p||'').trim()
     .replace(/[-_. ]*(?:19|20)\d\d[-_.]?\d\d[-_.]?\d\d(?:[-_.t]?\d\d[-_.]?\d\d(?:[-_.]?\d\d)?)?(?:[-_. ]+[0-9a-f]{4,})?$/i,'')
@@ -254,48 +288,55 @@ function when(t){const d=new Date(t),n=new Date(),hm=d.toLocaleTimeString([], {h
   if(d.toDateString()===n.toDateString())return'Today '+hm;
   if(n-d<6*864e5)return d.toLocaleDateString([], {weekday:'short'})+' '+hm;
   return d.toLocaleDateString([], {day:'numeric',month:'short'})+' '+hm;}
-const titleOf=s=>`${pretty(s.project)} · ${when(s.started_at)}`;
 
-/* ---------- example session (shown until a device is paired) ---------- */
-function sample(){
-  let seed=11;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647,R=(a,b)=>a+rnd()*(b-a);
-  let t=Date.now()-36e5,id=0;const rows=[];const add=(k,tool='')=>rows.push([++id,Math.round(t),k,tool]);
-  const tool=(n,a,b)=>{add('T',n);t+=R(a,b);add('D',n);t+=R(150,900);};
-  const turns=[[['Read',80,220],['Grep',60,150],['Read',80,200],['Edit',100,220],['Bash',1800,5200],['Edit',90,200],['Bash',1500,3000]],
-    [['WebSearch',1800,3500],['WebFetch',1200,2600],['WebFetch',1100,2400],['Write',120,260]],
-    [['mcp__Neon__run_sql',600,1200],['mcp__Neon__describe_table',500,1400],['Read',80,200],['Edit',100,200],['Edit',100,200],['Bash',2500,7000],['TodoWrite',40,90]],
-    ['agent',['Edit',110,240],['Bash',3000,6000],['Read',80,200]]];
-  add('S');t+=R(3000,6000);
-  turns.forEach((list,ti)=>{add('U');t+=R(1500,4000);
-    list.forEach(st=>{if(st==='agent'){add('T','Agent');t+=900;[['Glob',50,120],['Grep',60,140],['Read',80,200],['Read',80,200],['Grep',60,140]].forEach(x=>{t+=R(400,1600);tool(...x);});t+=1200;add('A');t+=50;add('D','Agent');t+=500;}else tool(...st);});
-    if(ti===2){add('C');t+=R(4000,7000);tool('Read',80,200);}
-    t+=R(800,2500);add('E');if(ti===1){t+=700;add('N');}t+=R(25000,140000);});
-  add('Q');
-  const calls=rows.filter(r=>r[2]==='T');
-  return {s:{id:'example',project:'Example session',started_at:rows[0][1],last_at:rows[rows.length-1][1],ended:true,events:rows.length,calls:calls.length,rhythm:calls.map(r=>letterOf(r[3])).join(''),example:true},rows};
+/* ---------- the library ----------
+   A recording is a whole session (Raw). A track is a stretch of one, cut by tracks.js with the Auto
+   rules and played in music time. Three sources: the starter pack (no setup), your own sessions
+   (once this device is paired) and tracks friends shared with you. */
+const STARTER={recs:[],tracks:[],rows:new Map(),ready:false,failed:false};
+let sessions=[],OWN_TRACKS=[],SHARED=[],skew=0;
+let cuts=store.get('pulse.cuts',{}),sharedStore=store.get('pulse.shared',[]),cutting=null;
+let lib=store.get('pulse.lib',{fav:[],lists:[]}),view=store.get('pulse.view','all'),mode=store.get('pulse.mode','tracks')==='raw'?'raw':'tracks';
+const ITEMS=new Map();
+function reindex(){ITEMS.clear();for(const a of [sessions,OWN_TRACKS,STARTER.recs,STARTER.tracks,SHARED])for(const x of a)ITEMS.set(x.id,x);}
+const findItem=id=>ITEMS.get(id);
+const isTrack=it=>it&&it.kind==='track';
+/* Track names come from what Claude mostly did; a name that repeats in one recording gets II, III… */
+const ROMAN=['','',' II',' III',' IV',' V',' VI',' VII',' VIII',' IX',' X'];
+const named=list=>{const seen={};return list.map(x=>{seen[x.kind]=(seen[x.kind]||0)+1;return{...x,title:x.kind+(ROMAN[seen[x.kind]]??' '+seen[x.kind])};});};
+const nCalls=n=>`${n} tool call${n===1?'':'s'}`;
+const mkTrack=(rec,x,n)=>({kind:'track',id:rec.id+'@'+x.t0,sid:rec.id,i0:x.i0,i1:x.i1,t0:x.t0,len:x.len,calls:x.calls,prompts:x.prompts,rhythm:x.rhythm,title:x.title||x.kind,n:n+1,project:rec.project,album:rec.starter?rec.title:pretty(rec.project),starter:!!rec.starter,ord:rec.ord});
+const startOf=it=>isTrack(it)?it.t0:it.started_at;
+const lenOf=it=>isTrack(it)?it.len:it.last_at-it.started_at;
+const albumOf=it=>isTrack(it)?(it.shared?'Shared with you':it.album):(it.starter?it.title:pretty(it.project));
+const titleOf=it=>isTrack(it)||it.starter?it.title:`${pretty(it.project)} · ${when(it.started_at)}`;
+function subOf(it){
+  if(!isTrack(it))return`${it.starter?'Raw · ':''}${fmt(lenOf(it))} · ${nCalls(it.calls)}`;
+  if(it.shared)return`${it.from?'From '+it.from:'Shared with you'} · ${fmt(it.len)}`;
+  return`${it.album} · ${it.starter?'':when(it.t0)+' · '}${fmt(it.len)}`;
 }
-const SAMPLE=sample();
+const isLive=s=>s&&!isTrack(s)&&!s.starter&&!s.ended&&(Date.now()+skew-s.last_at)<20*60e3;
+const byOrder=a=>a.slice().sort((x,y)=>x.starter&&y.starter?(x.ord-y.ord)||(startOf(x)-startOf(y)):startOf(y)-startOf(x));
 
 /* ---------- state ---------- */
-let sessions=[], skew=0, lib=store.get('pulse.lib',{fav:[],lists:[]}), view=store.get('pulse.view','all');
-let queue=[], qi=-1, from='All sessions', cur=null, M=null, rowsCache=new Map();
+let queue=[], qi=-1, from='Starter pack', cur=null, M=null, rowsCache=new Map(), picked=false;
 let pos=-400, idx=0, playing=false, muted=false, speed=1, capSel=3, cap=3, liveMode=false, repeat=0, shuffle=false, played=new Set();
-const isLive=s=>s&&!s.example&&!s.ended&&(Date.now()+skew-s.last_at)<20*60e3;
 /* Paired, but the first answer from the player hasn't arrived yet (a free database can take ~20 s to wake). */
 let connecting=false, connectSince=0, connectNote=null, retryT=null, refreshing=false;
 
 /* ---------- model ---------- */
-function build(rows){
+function build(rows,music=false){
   const ev=rows.map(r=>({id:r[0],t:r[1],k:r[2],tool:r[3]||'',lane:r[2]==='U'?'prompt':(r[2]==='T'||r[2]==='D')?laneOf(r[3]||''):'turn'})).sort((a,b)=>a.t-b.t||a.id-b.id);
   if(!ev.length)return null;
   const t0=ev[0].t;ev.forEach(e=>e.r=e.t-t0);
   const open={},notes=[];
   ev.forEach((e,i)=>{if(e.k==='T'){const n={lane:e.lane,s:i,e:-1};notes.push(n);(open[e.tool]||(open[e.tool]=[])).push(n);}else if(e.k==='D'){const q=open[e.tool];if(q&&q.length)q.shift().e=i;}});
-  const m={ev,notes,cuts:[],total:0,realTotal:ev[ev.length-1].r,maxId:Math.max(...ev.map(e=>e.id))};
+  const m={ev,notes,cuts:[],total:0,realTotal:ev[ev.length-1].r,maxId:Math.max(...ev.map(e=>e.id)),music};
   retime(m);return m;
 }
+/* Raw recordings shorten long pauses (the Pauses setting). Tracks are already in music time. */
 function retime(m=M){
-  if(!m)return;const c=cap*1000;let x=0;m.cuts=[];
+  if(!m)return;const c=m.music?0:cap*1000;let x=0;m.cuts=[];
   m.ev.forEach((e,i)=>{if(i){const g=e.r-m.ev[i-1].r,cg=c&&g>c?c:g;if(cg<g)m.cuts.push({x:x+cg/2,real:g});x+=cg;}e.x=x;});
   m.total=x;
 }
@@ -304,7 +345,7 @@ function realAt(p){const ev=M.ev;if(p<=0)return 0;let lo=0,hi=ev.length-1;while(
 function seek(p){if(!M)return;pos=Math.max(-400,Math.min(p,liveMode?Infinity:M.total));idx=M.ev.findIndex(e=>e.x>pos);if(idx<0)idx=M.ev.length;}
 
 /* ---------- sound ---------- */
-let ac=null,master=null,noiseBuf=null;
+let ac=null,master=null,noiseBuf=null,lead=0;
 function audio(){
   if(!ac){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;ac=new AC();
     const comp=ac.createDynamicsCompressor();master=ac.createGain();master.gain.value=.55;master.connect(comp);comp.connect(ac.destination);
@@ -312,8 +353,8 @@ function audio(){
   if(ac.state==='suspended')ac.resume();return ac;
 }
 function env(t,a,p,d){const g=ac.createGain();g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(p,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+a+d);g.connect(master);return g;}
-function tone(type,f,p,d,a=.005,f2=0,at=0){const t=ac.currentTime+at,o=ac.createOscillator();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+a+d);o.connect(env(t,a,p,d));o.start(t);o.stop(t+a+d+.05);}
-function noise(p,d,ft,f,f2=0,a=.002){const t=ac.currentTime,s=ac.createBufferSource(),fl=ac.createBiquadFilter();s.buffer=noiseBuf;fl.type=ft;fl.frequency.setValueAtTime(f,t);if(f2)fl.frequency.exponentialRampToValueAtTime(f2,t+a+d);s.connect(fl);fl.connect(env(t,a,p,d));s.start(t);s.stop(t+a+d+.05);}
+function tone(type,f,p,d,a=.005,f2=0,at=0){const t=ac.currentTime+lead+at,o=ac.createOscillator();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+a+d);o.connect(env(t,a,p,d));o.start(t);o.stop(t+a+d+.05);}
+function noise(p,d,ft,f,f2=0,a=.002){const t=ac.currentTime+lead,s=ac.createBufferSource(),fl=ac.createBiquadFilter();s.buffer=noiseBuf;fl.type=ft;fl.frequency.setValueAtTime(f,t);if(f2)fl.frequency.exponentialRampToValueAtTime(f2,t+a+d);s.connect(fl);fl.connect(env(t,a,p,d));s.start(t);s.stop(t+a+d+.05);}
 const SND={U:()=>{tone('sine',160,.9,.38,.002,42);noise(.15,.05,'lowpass',900);},
   T:l=>{const f=freq(l);tone('triangle',f,.32,.24);tone('sine',f*2,.07,.14);},
   D:()=>noise(.09,.03,'highpass',6500),
@@ -337,8 +378,13 @@ function drawRoll(now){
   g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle=C.bg;g.fillRect(0,0,W,H);
   LANES.forEach((l,i)=>{if(i%2===0){g.fillStyle=C.grid;g.fillRect(gut,top+i*lh,W-gut,lh);}});
   g.save();g.beginPath();g.rect(gut,0,W-gut,H);g.clip();
-  g.strokeStyle=C.line;g.lineWidth=1;const s0=Math.floor((pos-(ph-gut)/px)/1000),s1=Math.ceil((pos+(W-ph)/px)/1000);
-  for(let s=s0;s<=s1;s++){const x=Math.round(X(s*1000))+.5;g.beginPath();g.moveTo(x,top-4);g.lineTo(x,top);g.stroke();}
+  g.strokeStyle=C.line;g.lineWidth=1;
+  if(M.music){/* tracks: a beat on every tick, a bar line every four beats */
+    const beat=stepMs(AUTO.tempo)*4,b0=Math.max(0,Math.floor((pos-(ph-gut)/px)/beat)),b1=Math.ceil((pos+(W-ph)/px)/beat);
+    for(let b=b0;b<=b1;b++){const x=Math.round(X(b*beat))+.5,bar=b%4===0;g.globalAlpha=bar?.8:1;g.beginPath();g.moveTo(x,bar?top-8:top-4);g.lineTo(x,bar?H-4:top);g.stroke();}
+    g.globalAlpha=1;
+  }else{const s0=Math.floor((pos-(ph-gut)/px)/1000),s1=Math.ceil((pos+(W-ph)/px)/1000);
+    for(let s=s0;s<=s1;s++){const x=Math.round(X(s*1000))+.5;g.beginPath();g.moveTo(x,top-4);g.lineTo(x,top);g.stroke();}}
   g.font=`500 10px ${C.mono}`;g.textAlign='center';
   for(const cu of M.cuts){const x=X(cu.x);if(x<gut-60||x>W+60)continue;g.strokeStyle=C.muted;g.globalAlpha=.5;g.setLineDash([2,4]);g.beginPath();g.moveTo(x,top);g.lineTo(x,H-4);g.stroke();g.setLineDash([]);g.globalAlpha=1;if(cu.real>=5000){g.fillStyle=C.muted;g.fillText('pause '+fmtGap(cu.real),x,12);}}
   for(const e of M.ev){if(e.k!=='E')continue;const x=X(e.x);if(x<gut||x>W)continue;g.strokeStyle=C.turn;g.globalAlpha=.14;g.lineWidth=2;g.beginPath();g.moveTo(x,top);g.lineTo(x,H-4);g.stroke();g.globalAlpha=1;g.lineWidth=1;}
@@ -361,7 +407,7 @@ function drawRoll(now){
   }
   g.globalAlpha=1;
   ripples=ripples.filter(p=>now-p.born<650);
-  for(const p of ripples){const a=(now-p.born)/650,cy=top+LI[p.lane]*lh+lh/2;g.strokeStyle=C[p.lane];g.globalAlpha=1-a;g.lineWidth=2.5*(1-a)+.5;g.beginPath();g.arc(ph,cy,5+a*lh*1.3,0,7);g.stroke();}
+  for(const p of ripples){if(now<p.born)continue;const a=(now-p.born)/650,cy=top+LI[p.lane]*lh+lh/2;g.strokeStyle=C[p.lane];g.globalAlpha=1-a;g.lineWidth=2.5*(1-a)+.5;g.beginPath();g.arc(ph,cy,5+a*lh*1.3,0,7);g.stroke();}
   g.globalAlpha=1;g.lineWidth=1.5;g.strokeStyle=liveMode?cssv('--live'):C.ink;g.fillStyle=g.strokeStyle;
   g.beginPath();g.moveTo(ph,top-6);g.lineTo(ph,H);g.stroke();g.beginPath();g.moveTo(ph-5,top-12);g.lineTo(ph+5,top-12);g.lineTo(ph,top-5);g.fill();
   g.restore();
@@ -369,14 +415,14 @@ function drawRoll(now){
   LANES.forEach((l,i)=>{const cy=top+i*lh+lh/2;g.fillStyle=C[l.id];rr(g,0,cy-4,8,8,2);g.fill();g.fillStyle=C.muted;g.fillText(l.label,14,cy);});
   g.textBaseline='alphabetic';
 }
-/* While connecting: empty lanes and a soft beat walking down them, so the player never looks frozen. */
-function drawWaiting(now){
+/* While connecting or loading: empty lanes and a soft beat walking down them, so the player never looks frozen. */
+function drawWaiting(now,msg){
   const g=rg,{W,H,gut,top,lh}=geo(),k=reduce?-1:Math.floor(now/260)%LANES.length,cx=gut+(W-gut)/2;
   g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle=C.bg;g.fillRect(0,0,W,H);
   LANES.forEach((l,i)=>{if(i%2===0){g.fillStyle=C.grid;g.fillRect(gut,top+i*lh,W-gut,lh);}});
   g.font=`500 ${W<520?11:12.5}px ${C.body}`;g.textAlign='left';g.textBaseline='middle';
   LANES.forEach((l,i)=>{const cy=top+i*lh+lh/2;g.globalAlpha=i===k?1:.35;g.fillStyle=C[l.id];rr(g,0,cy-4,8,8,2);g.fill();g.globalAlpha=1;g.fillStyle=C.muted;g.fillText(l.label,14,cy);});
-  g.textAlign='center';g.font=`600 15px ${C.body}`;g.fillStyle=C.muted;g.fillText(navigator.onLine?'Connecting to your player…':'You are offline',cx,top+(H-top)/2);
+  g.textAlign='center';g.font=`600 15px ${C.body}`;g.fillStyle=C.muted;g.fillText(msg,cx,top+(H-top)/2);
   g.textBaseline='alphabetic';
   const m=mg,MW=mini.clientWidth,MH=mini.clientHeight;m.setTransform(dpr,0,0,dpr,0,0);m.fillStyle=C.grid;m.fillRect(0,0,MW,MH);
 }
@@ -388,7 +434,7 @@ function drawMini(){
   for(const e of M.ev){if(e.k==='T'||e.k==='D')continue;g.fillStyle=C[e.lane];g.fillRect(X(e.x)-1,3+LI[e.lane]*rh,2,Math.max(2,rh-1));}
   g.fillStyle=C.ink;g.fillRect(X(Math.max(0,pos))-1,0,2,H);
 }
-/* Cover art: the session's own rhythm wound into a ring, one tick per tool call, coloured by lane. */
+/* Cover art: the track's own rhythm wound into a ring, one tick per tool call, coloured by lane. */
 function drawCover(cv,s){
   const g=cv.getContext('2d'),S=cv.width,c=S/2,rhy=s.rhythm||'',n=rhy.length;
   g.clearRect(0,0,S,S);g.fillStyle=C.grid;g.fillRect(0,0,S,S);
@@ -406,57 +452,80 @@ let lastUi=0;
 function ui(now){
   if(now-lastUi<200)return;lastUi=now;
   const r=realAt(pos);tNow.textContent=fmt(r);tEnd.textContent=liveMode?'live':fmt(M.realTotal);
+  if(M.music){tempo.textContent=`${AUTO.tempo} BPM`;return;}
   let n=0;for(const e of M.ev){if(e.r>r)break;if(e.r>r-60000&&(e.k==='T'||e.k==='U'))n++;}
   tempo.textContent=`${n} actions/min`;
 }
 function setPlayIcon(){$('#playIcon').setAttribute('d',playing?'M6 4h4v16H6zM14 4h4v16h-4z':'M7 4.5v15l13-7.5z');$('#play').setAttribute('aria-label',playing?'Pause':'Play');
+  if(playing)$('#play').classList.remove('cue');
   if('mediaSession' in navigator)navigator.mediaSession.playbackState=playing?'playing':'paused';renderLive();}
 function setNP(){
   if(!cur)return;$('#npTitle').textContent=titleOf(cur);$('#npFrom').textContent=(liveMode?'Live now · ':'Playing from ')+from;
-  const prompts=M?M.ev.filter(e=>e.k==='U').length:0;
-  $('#npMeta').textContent=`${fmt((M?M.realTotal:cur.last_at-cur.started_at))} · ${cur.calls} tool calls · ${prompts} prompts`;
+  if(isTrack(cur))$('#npMeta').textContent=`${cur.shared?(cur.from?'From '+cur.from:'Shared with you'):albumOf(cur)}${cur.n?' · Track '+cur.n:''} · ${fmt(M?M.total:cur.len)} · ${cur.calls} notes`;
+  else{const prompts=M?M.ev.filter(e=>e.k==='U').length:0;$('#npMeta').textContent=`${fmt((M?M.realTotal:cur.last_at-cur.started_at))} · ${nCalls(cur.calls)} · ${prompts} prompt${prompts===1?'':'s'}`;}
   const fav=lib.fav.includes(cur.id);$('#favBtn').setAttribute('aria-pressed',String(fav));$('#favBtn').setAttribute('aria-label',fav?'Remove from favourites':'Add to favourites');
+  $('#favBtn').hidden=false;$('#shareTrack').hidden=!isTrack(cur);$('#rawBtn').hidden=!isTrack(cur)||!!cur.shared;$('#capLbl').hidden=isTrack(cur)||liveMode;
   drawCover($('#cover'),cur);media();renderLive();
 }
 function media(){
   if(!('mediaSession' in navigator)||!cur)return;
-  try{navigator.mediaSession.metadata=new MediaMetadata({title:titleOf(cur),artist:'Pulse',album:pretty(cur.project),artwork:[{src:$('#cover').toDataURL('image/png'),sizes:'168x168',type:'image/png'}]});
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:titleOf(cur),artist:cur.shared&&cur.from?cur.from:'Pulse',album:albumOf(cur),artwork:[{src:$('#cover').toDataURL('image/png'),sizes:'168x168',type:'image/png'}]});
     const h={play:()=>togglePlay(true),pause:()=>togglePlay(false),nexttrack:()=>next(),previoustrack:()=>prev()};
     for(const k in h)navigator.mediaSession.setActionHandler(k,h[k]);}catch(e){}
 }
-function fire(e){if(!muted&&ac&&SND[e.k])SND[e.k](e.lane);if(e.k!=='D'&&!reduce)ripples.push({lane:e.lane,born:performance.now()});}
+/* Sounds are scheduled a moment ahead on the audio clock, so the rhythm stays tight whatever the screen does. */
+function fire(e,delay=0){if(!muted&&ac&&SND[e.k]){lead=delay;try{SND[e.k](e.lane);}finally{lead=0;}}if(e.k!=='D'&&!reduce)ripples.push({lane:e.lane,born:performance.now()+delay*1000});}
+const AHEAD=80;
 function frame(now){
   const dt=frame.last?Math.min(now-frame.last,100):0;frame.last=now;
   if(playing&&M){
-    pos+=dt*(liveMode?1:speed);let fired=0;
-    while(idx<M.ev.length&&M.ev[idx].x<=pos){if(fired<8)fire(M.ev[idx]);fired++;idx++;}
+    const sp=liveMode?1:speed;pos+=dt*sp;let fired=0;
+    while(idx<M.ev.length&&M.ev[idx].x<=pos+AHEAD*sp){const e=M.ev[idx];if(fired<8)fire(e,Math.max(0,(e.x-pos)/sp/1000));fired++;idx++;}
     if(!liveMode&&pos>=M.total+1200)onEnd();
   }
-  if(connecting)drawWaiting(now);else if(M){drawRoll(now);drawMini();ui(now);}
+  if(connecting)drawWaiting(now,navigator.onLine?'Connecting to your player…':'You are offline');
+  else if(M){drawRoll(now);drawMini();ui(now);}
+  else drawWaiting(now,STARTER.failed?'Couldn’t load the starter pack':'Loading…');
   requestAnimationFrame(frame);
 }
 function togglePlay(force){
   audio();if(!M)return;const want=force===undefined?!playing:force;
-  if(want&&!liveMode&&pos>=M.total)seek(-400);
+  if(want){picked=true;if(!liveMode&&pos>=M.total)seek(-400);}
   if(want&&!playing&&liveMode){ripples=[];seek(Date.now()+skew-M.ev[0].t);}/* like live radio: resuming jumps back to now */
   playing=want;setPlayIcon();
 }
 
-/* ---------- queue ---------- */
-async function load(s,{autoplay=true,live=false}={}){
-  cur=s;liveMode=live&&isLive(s);cap=liveMode?0:capSel;
-  let rows=s.example?SAMPLE.rows:rowsCache.get(s.id);
-  if(!rows){statusEl.textContent='Loading…';rows=[];let after=0;
-    try{for(;;){const d=await api(`events?s=${encodeURIComponent(s.id)}&after=${after}`);rows.push(...d.rows);if(d.rows.length<5000)break;after=d.rows[d.rows.length-1][0];}
-      rowsCache.set(s.id,rows);}catch(e){status();return toast('Could not load that session. Check your connection.');}
-    status();}
-  M=build(rows)||build([[0,s.started_at,'S','']]);
-  played.add(s.id);ripples=[];seek(liveMode?Date.now()+skew-M.ev[0].t:-400);setNP();renderTracks();
-  if(autoplay){audio();playing=true;}setPlayIcon();
+/* ---------- loading what to play ---------- */
+async function fetchRows(sid){const rows=[];let after=0;
+  for(;;){const d=await api(`events?s=${encodeURIComponent(sid)}&after=${after}`);rows.push(...d.rows);if(d.rows.length<5000)break;after=d.rows[d.rows.length-1][0];}
+  return rows;}
+function cacheRows(sid,rows){rowsCache.delete(sid);rowsCache.set(sid,rows);if(rowsCache.size>24)rowsCache.delete(rowsCache.keys().next().value);}
+async function recRows(sid){if(STARTER.rows.has(sid))return STARTER.rows.get(sid);let rows=rowsCache.get(sid);if(!rows){rows=await fetchRows(sid);cacheRows(sid,rows);}return rows;}
+async function itemRows(it){
+  if(!isTrack(it))return recRows(it.id);
+  if(it.shared)return it.rows;
+  return trackRows(sortRows(await recRows(it.sid)),it.i0,it.i1,AUTO.tempo);
+}
+let loadSeq=0;
+async function load(it,{autoplay=true,live=false,atId=null}={}){
+  const seq=++loadSeq;cur=it;liveMode=live&&isLive(it);cap=liveMode?0:capSel;
+  const sid=isTrack(it)?it.sid:it.id,slow=!it.shared&&!STARTER.rows.has(sid)&&!rowsCache.has(sid);
+  if(slow)statusEl.textContent='Loading…';
+  let rows;
+  try{rows=await itemRows(it);}catch(e){if(seq===loadSeq){status();toast('Could not load that. Check your connection.');}return;}
+  if(seq!==loadSeq)return;
+  if(slow)status();
+  M=build(rows,isTrack(it))||build([[0,startOf(it)||0,'S','']],isTrack(it));
+  played.add(it.id);ripples=[];
+  let p=-400;
+  if(liveMode)p=Date.now()+skew-M.ev[0].t;
+  else if(atId!=null){const e=M.ev.find(e=>e.id===atId);if(e)p=e.x-400;}
+  seek(p);setNP();renderTracks();
+  if(autoplay){audio();playing=true;picked=true;}setPlayIcon();
 }
 function playFromView(id){
   const items=viewItems(view);queue=items.map(s=>s.id);qi=queue.indexOf(id);from=viewName(view);played=new Set();
-  const s=items[qi]||sessions.find(x=>x.id===id);if(s)load(s);
+  const s=items[qi]||findItem(id);if(s)load(s);
 }
 function pickNext(){
   if(!queue.length)return -1;
@@ -465,46 +534,128 @@ function pickNext(){
     return left[Math.floor(Math.random()*left.length)];}
   if(qi+1<queue.length)return qi+1;return repeat===1?0:-1;
 }
-function next(){if(connecting)return;const i=pickNext();if(i<0){playing=false;setPlayIcon();seek(M?M.total:0);return;}qi=i;const s=findS(queue[i]);if(s)load(s);}
-function prev(){if(connecting)return;if(pos>3000||qi<=0){seek(-400);return;}qi--;const s=findS(queue[qi]);if(s)load(s);}
+function next(){if(connecting)return;const i=pickNext();if(i<0){playing=false;setPlayIcon();seek(M?M.total:0);return;}qi=i;const s=findItem(queue[i]);if(s)load(s);}
+function prev(){if(connecting)return;if(pos>3000||qi<=0){seek(-400);return;}qi--;const s=findItem(queue[qi]);if(s)load(s);}
 function onEnd(){if(repeat===2){seek(-400);played.delete(cur.id);return;}next();}
-const findS=id=>id==='example'?SAMPLE.s:sessions.find(s=>s.id===id);
+/* Something to show when nothing was picked yet: your own newest track, else the starter pack. */
+function showFirst(v=view){const items=viewItems(v);if(!items.length)return false;queue=items.map(x=>x.id);qi=0;from=viewName(v);played=new Set();load(items[0],{autoplay:false});return true;}
+function showStarter(){if(STARTER.ready&&!picked)showFirst(KEY?'starter':view)||showFirst('starter');}
+function maybeShowOwn(){
+  if(!KEY||picked||playing||connecting)return;
+  const items=viewItems(view);
+  if(items.length&&(!cur||cur.starter))showFirst();else if(!cur)showStarter();
+}
+
+/* ---------- starter pack: plays with no setup ---------- */
+async function loadStarter(){
+  try{
+    const r=await fetch('/starter/index.json');if(!r.ok)throw new Error();const index=await r.json();
+    const recs=await Promise.all((index.recordings||[]).slice(0,40).map(async(x,ord)=>{
+      const f=await fetch('/starter/'+encodeURIComponent(String(x.file)));if(!f.ok)throw new Error();
+      const {project,rows}=parsePulse(await f.text()),ev=sortRows(rows);if(!ev.length)return null;
+      const calls=ev.filter(e=>e[2]==='T');
+      const s={id:String(x.id).slice(0,64),title:String(x.title||pretty(project)).slice(0,60),project,started_at:ev[0][1],last_at:ev[ev.length-1][1],ended:true,events:ev.length,calls:calls.length,rhythm:calls.map(e=>letterOf(e[3])).join('').slice(0,600),starter:true,ord};
+      STARTER.rows.set(s.id,rows);s.tracks=named(cut(rows).tracks).map((t,n)=>mkTrack(s,t,n));return s;
+    }));
+    STARTER.recs=recs.filter(Boolean);STARTER.tracks=STARTER.recs.flatMap(s=>s.tracks);STARTER.ready=true;
+  }catch(e){STARTER.failed=true;}
+  reindex();renderLib();
+}
+
+/* ---------- your own sessions become tracks ----------
+   Each finished session is cut once (tracks.js) and the result kept on this device; the cut is redone
+   only when the session grows or the rules change. Live sessions wait until they finish. */
+const cutKey=s=>`${RULES_VERSION}:${s.events}`;
+function saveCuts(){if(!store.set('pulse.cuts',cuts)){/* storage full: keep the newest half */const keep=sessions.slice(0,Math.ceil(sessions.length/2)).map(s=>s.id);cuts=Object.fromEntries(Object.entries(cuts).filter(([k])=>keep.includes(k)));store.set('pulse.cuts',cuts);}}
+function ownTracks(){OWN_TRACKS=sessions.filter(s=>cuts[s.id]&&cuts[s.id].k===cutKey(s)).flatMap(s=>named(cuts[s.id].t).map((x,n)=>mkTrack(s,x,n)));}
+async function cutQueue(){
+  if(cutting||!KEY)return;
+  const todo=sessions.filter(s=>!isLive(s)&&!(cuts[s.id]&&cuts[s.id].k===cutKey(s)));
+  if(!todo.length)return;
+  cutting={done:0,total:todo.length};renderTracks();
+  try{
+    for(const s of todo){
+      if(!KEY)break;
+      const rows=rowsCache.get(s.id)||await fetchRows(s.id);
+      cuts[s.id]={k:cutKey(s),t:cut(rows).tracks.map(({i0,i1,t0,len,calls,prompts,rhythm,kind})=>({i0,i1,t0,len,calls,prompts,rhythm:rhythm.slice(0,300),kind}))};
+      cutting.done++;
+      if(cutting.done%5===0||cutting.done===todo.length){saveCuts();ownTracks();reindex();renderLib();maybeShowOwn();}
+    }
+  }catch(e){/* offline or the database is asleep: carry on at the next refresh */}
+  finally{cutting=null;saveCuts();ownTracks();reindex();renderLib();maybeShowOwn();}
+}
+
+/* ---------- tracks friends share ---------- */
+const hashOf=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0).toString(36);};
+function sharedItem(packed,d,at){const calls=d.rows.filter(r=>r[2]==='T');
+  return{kind:'track',shared:true,id:'x:'+hashOf(packed),title:d.title,from:d.from,rows:d.rows,len:d.rows[d.rows.length-1][1],calls:calls.length,prompts:d.rows.filter(r=>r[2]==='U').length,rhythm:calls.map(r=>letterOf(r[3])).join('').slice(0,600),t0:at};}
+let sharedReady=null;
+async function restoreShared(){const out=[];for(const x of sharedStore.slice(0,50)){try{out.push(sharedItem(x.p,await decodeTrack(x.p),x.at));}catch(e){}}SHARED=[...SHARED.filter(s=>!out.some(o=>o.id===s.id)),...out];reindex();renderLib();}
+async function openShared(packed){
+  await sharedReady;
+  let it;try{const id='x:'+hashOf(packed);it=findItem(id)||sharedItem(packed,await decodeTrack(packed),Date.now());}catch(e){toast('That track link is damaged or incomplete.');return;}
+  if(!sharedStore.some(x=>'x:'+hashOf(x.p)===it.id)){sharedStore.unshift({p:packed,at:it.t0});sharedStore=sharedStore.slice(0,50);store.set('pulse.shared',sharedStore);}
+  SHARED=[it,...SHARED.filter(x=>x.id!==it.id)];reindex();
+  if(connecting)setConnecting(false);
+  picked=true;queue=[it.id];qi=0;from='Shared with you';played=new Set();
+  await load(it,{autoplay:false});renderLib();
+  $('#play').classList.add('cue');toast(it.from?`${it.from} shared a track. Tap play.`:'Someone shared a track. Tap play.');
+}
 
 /* ---------- library ---------- */
+const srcFor=v=>v==='starter'||!KEY?STARTER:{recs:sessions,tracks:OWN_TRACKS};
 function viewItems(v){
-  let a=[...allSessions()].sort((x,y)=>y.started_at-x.started_at);
-  if(v==='fav')a=a.filter(s=>lib.fav.includes(s.id));
-  else if(v==='today'){const d=new Date().toDateString();a=a.filter(s=>new Date(s.started_at).toDateString()===d);}
-  else if(v==='longest')a=a.sort((x,y)=>(y.last_at-y.started_at)-(x.last_at-x.started_at)).slice(0,25);
-  else if(v.startsWith('p:'))a=a.filter(s=>pretty(s.project)===v.slice(2));
-  else if(v.startsWith('l:')){const l=lib.lists.find(l=>l.id===v.slice(2));a=l?l.items.map(findS).filter(Boolean):[];}
+  if(v==='shared')return SHARED.slice();
+  if(v.startsWith('l:')){const l=lib.lists.find(l=>l.id===v.slice(2));return l?l.items.map(findItem).filter(Boolean):[];}
+  const pick=src=>mode==='raw'?src.recs:src.tracks;
+  if(v==='fav')return byOrder([...pick(srcFor('all')),...(KEY?pick(STARTER):[]),...(mode==='tracks'?SHARED:[])].filter(s=>lib.fav.includes(s.id)));
+  let a=byOrder(pick(srcFor(v)));
+  if(v==='today'){const d=new Date().toDateString();a=a.filter(s=>new Date(startOf(s)).toDateString()===d);}
+  else if(v==='longest')a=a.sort((x,y)=>lenOf(y)-lenOf(x)).slice(0,25);
+  else if(v.startsWith('p:'))a=a.filter(s=>albumOf(s)===v.slice(2));
   return a;
 }
-const allSessions=()=>KEY?sessions:[SAMPLE.s];
-function viewName(v){if(v==='all')return'All sessions';if(v==='fav')return'Favourites';if(v==='today')return'Today';if(v==='longest')return'Longest sessions';
-  if(v.startsWith('p:'))return v.slice(2);if(v.startsWith('l:'))return(lib.lists.find(l=>l.id===v.slice(2))||{}).name||'Playlist';return'All sessions';}
+function viewName(v){if(v==='all')return!KEY?'Starter pack':mode==='raw'?'All recordings':'All tracks';if(v==='fav')return'Favourites';if(v==='today')return'Today';
+  if(v==='longest')return mode==='raw'?'Longest recordings':'Longest tracks';if(v==='starter')return'Starter pack';if(v==='shared')return'Shared with you';
+  if(v.startsWith('p:'))return v.slice(2);if(v.startsWith('l:'))return(lib.lists.find(l=>l.id===v.slice(2))||{}).name||'Playlist';return'All tracks';}
 function renderChips(){
-  const counts={};allSessions().forEach(s=>{const n=pretty(s.project);counts[n]=(counts[n]||0)+1;});
-  const projects=KEY?Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,8):[];
-  const chips=[['all','All'],['fav','Favourites'],['today','Today'],['longest','Longest'],...lib.lists.map(l=>['l:'+l.id,l.name]),...projects.map(p=>['p:'+p,p])];
-  if(!chips.some(c=>c[0]===view)&&(!KEY||sessions.length))view='all';
+  const src=srcFor('all'),counts={};(mode==='raw'?src.recs:src.tracks).forEach(s=>{const n=albumOf(s);counts[n]=(counts[n]||0)+1;});
+  const albums=Object.keys(counts).sort((a,b)=>KEY?counts[b]-counts[a]:0).slice(0,8);
+  const chips=[['all','All'],['fav','Favourites'],...(KEY?[['today','Today']]:[]),['longest','Longest'],...lib.lists.map(l=>['l:'+l.id,l.name]),...albums.map(p=>['p:'+p,p]),...(KEY&&STARTER.ready?[['starter','Starter pack']]:[]),...(SHARED.length?[['shared','Shared with you']]:[])];
+  if(!chips.some(c=>c[0]===view)&&(KEY?sessions.length:STARTER.ready))view='all';
   $('#chips').innerHTML=chips.map(([k,n])=>`<button class="chip" type="button" data-v="${esc(k)}" aria-pressed="${k===view}">${esc(n)}</button>`).join('')+`<button class="chip" type="button" data-new="1">+ New playlist</button>`;
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+}
+function emptyText(){
+  if(view==='fav')return'Tap the heart on anything you like to keep it here.';
+  if(view.startsWith('l:'))return'Add tracks with the + button next to any track.';
+  if(view==='shared')return'Tracks friends send you appear here.';
+  if(!KEY||view==='starter')return STARTER.failed?'The starter pack couldn’t load. Check your connection.':'Loading the starter pack…';
+  if(view==='today')return mode==='raw'?'Nothing recorded today yet.':'No tracks from today yet.';
+  if(!sessions.length)return'Your sessions appear here as soon as Claude Code starts working.';
+  if(mode==='tracks')return cutting?'Cutting your sessions into tracks…':'Your sessions so far are too short for a track. You’ll find them under Raw recordings.';
+  return'Nothing here yet.';
+}
+function listNote(){
+  if(view==='shared'||view.startsWith('l:'))return'';
+  if(mode==='tracks')return cutting?`Cutting your sessions into tracks: ${cutting.done} of ${cutting.total}`:'Tracks are cut automatically: pauses removed, three minutes at most. Whole sessions are under Raw recordings.';
+  return'Whole sessions in real time. Long pauses are shortened while you listen.';
 }
 function renderTracks(){
-  const items=viewItems(view);$('#listTitle').textContent=viewName(view);
+  const items=viewItems(view);$('#listTitle').textContent=viewName(view);$('#listNote').textContent=listNote();
   const act=$('#listAction');act.hidden=!view.startsWith('l:');act.textContent='Delete playlist';act.dataset.armed='';
   if(connecting){$('#tracks').innerHTML='<li><p class="empty">Connecting to your sessions…</p></li>';return;}
-  if(!items.length){$('#tracks').innerHTML=`<li><p class="empty">${view==='fav'?'Tap the heart on any session to keep it here.':view.startsWith('l:')?'Add sessions with the + button next to any session.':KEY?'Your sessions appear here as soon as Claude Code starts working.':'Pair this device to see your own sessions.'}</p></li>`;return;}
+  if(!items.length){$('#tracks').innerHTML=`<li><p class="empty">${esc(emptyText())}</p></li>`;return;}
   $('#tracks').innerHTML=items.map(s=>{const fav=lib.fav.includes(s.id),on=cur&&cur.id===s.id;
-    return `<li class="${on?'on':''}"><button class="row" type="button" data-play="${esc(s.id)}"><canvas width="88" height="88" data-cover="${esc(s.id)}"></canvas><span class="rt"><b>${esc(titleOf(s))}${isLive(s)?'<span class="pill">Live</span>':''}</b><small>${fmt(s.last_at-s.started_at)} · ${s.calls} tool calls</small></span></button>
+    return `<li class="${on?'on':''}"><button class="row" type="button" data-play="${esc(s.id)}"><canvas width="88" height="88" data-cover="${esc(s.id)}"></canvas><span class="rt"><b>${esc(titleOf(s))}${isLive(s)?'<span class="pill">Live</span>':''}</b><small>${esc(subOf(s))}</small></span></button>
     <button class="icon heart" type="button" data-fav="${esc(s.id)}" aria-pressed="${fav}" aria-label="${fav?'Remove from':'Add to'} favourites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20s-7-4.4-9.2-9C1.4 7.8 3.3 4.5 6.6 4.5c2 0 3.6 1.1 5.4 3.2 1.8-2.1 3.4-3.2 5.4-3.2 3.3 0 5.2 3.3 3.8 6.5C19 15.6 12 20 12 20z"/></svg></button>
     <button class="icon" type="button" data-add="${esc(s.id)}" aria-label="Add to playlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></li>`;}).join('');
-  document.querySelectorAll('canvas[data-cover]').forEach(cv=>{const s=findS(cv.dataset.cover);if(s)drawCover(cv,s);});
+  document.querySelectorAll('canvas[data-cover]').forEach(cv=>{const s=findItem(cv.dataset.cover);if(s)drawCover(cv,s);});
 }
 function renderLive(){
   const l=KEY&&!connecting?sessions.find(isLive):null,card=$('#liveCard'),btn=$('#liveBtn');card.hidden=!l;if(!l)return;
   const on=!!(cur&&cur.id===l.id&&liveMode&&playing);
-  card.dataset.id=l.id;$('#liveTitle').textContent=titleOf(l);$('#liveMeta').textContent=`${(on?cur:l).calls} tool calls so far`;
+  card.dataset.id=l.id;$('#liveTitle').textContent=titleOf(l);$('#liveMeta').textContent=`${nCalls((on?cur:l).calls)} so far`;
   if(btn.dataset.busy)return;
   btn.classList.toggle('listening',on);btn.setAttribute('aria-pressed',String(on));btn.textContent=on?'Listening live':'Listen live';
   btn.title=on?'Tap to pause':'';
@@ -515,29 +666,29 @@ let saveT;function saveLib(){store.set('pulse.lib',lib);renderLib();if(cur)setNP
 function toggleFav(id){const i=lib.fav.indexOf(id);if(i>=0)lib.fav.splice(i,1);else lib.fav.unshift(id);saveLib();}
 
 /* ---------- cloud sync ---------- */
-function status(){statusEl.textContent=!KEY?'Example session':!navigator.onLine?'Offline':connecting?'Connecting…':liveMode?'Live':'Synced';statusEl.classList.toggle('wait',connecting&&navigator.onLine);}
+function status(){statusEl.textContent=!KEY?'':!navigator.onLine?'Offline':connecting?'Connecting…':liveMode?'Live':'Synced';statusEl.classList.toggle('wait',connecting&&navigator.onLine);}
 function setConnecting(on){
   connecting=on;clearTimeout(connectNote);clearTimeout(retryT);
   if(on){
     connectSince=Date.now();cur=null;M=null;playing=false;liveMode=false;ripples=[];setPlayIcon();
     $('#npFrom').textContent='Your sessions';$('#npTitle').textContent='Connecting…';$('#npMeta').textContent='Waking up your database';
-    $('#favBtn').hidden=true;drawCover($('#cover'),{rhythm:''});tNow.textContent=tEnd.textContent='0:00';tempo.textContent='';
+    $('#favBtn').hidden=true;$('#shareTrack').hidden=true;$('#rawBtn').hidden=true;drawCover($('#cover'),{rhythm:''});tNow.textContent=tEnd.textContent='0:00';tempo.textContent='';
     connectNote=setTimeout(()=>{if(connecting)$('#npMeta').textContent='Still waking up. After a quiet spell the first load can take half a minute.';},6000);
-  }else $('#favBtn').hidden=false;
+  }
   status();renderLib();
 }
 async function refresh(){
   if(!KEY||refreshing||(document.hidden&&!connecting))return;refreshing=true;
   try{const d=await api('sessions');skew=d.now-Date.now();sessions=d.sessions;
     const woke=connecting;if(woke)setConnecting(false);
-    if(cur&&!cur.example){const fresh=sessions.find(s=>s.id===cur.id);if(fresh)Object.assign(cur,fresh);}
-    renderLib();status();
-    if(sessions.length&&(!cur||(cur.example&&!playing))){const s=viewItems(view)[0]||sessions[0];queue=viewItems(view).map(x=>x.id);qi=0;from=viewName(view);load(s,{autoplay:false});}
-    else if(!cur)load(SAMPLE.s,{autoplay:false});/* nothing recorded yet: keep the example on screen */
+    if(cur&&!isTrack(cur)&&!cur.starter){const fresh=sessions.find(s=>s.id===cur.id);if(fresh)Object.assign(cur,fresh);}
+    if(sessions.length<500){const ids=new Set(sessions.map(s=>s.id));let gone=false;for(const k in cuts)if(!ids.has(k)){delete cuts[k];gone=true;}if(gone)saveCuts();}
+    ownTracks();reindex();renderLib();status();maybeShowOwn();
     if(woke)syncLib();
+    cutQueue();
   }catch(e){
     if(connecting&&KEY){
-      if(e.message==='setup'){setConnecting(false);load(SAMPLE.s,{autoplay:false});}
+      if(e.message==='setup'){setConnecting(false);showStarter();}
       else{const long=Date.now()-connectSince>45000;retryT=setTimeout(refresh,long?8000:2500);
         if(long)$('#npMeta').textContent='Can\'t reach your player yet. Pulse keeps trying.';}
     }
@@ -547,11 +698,11 @@ async function refresh(){
 async function syncLib(){if(!KEY)return;try{const d=await api('library');lib={fav:[],lists:[],...d.data};store.set('pulse.lib',lib);renderLib();if(cur)setNP();}catch(e){}}
 let following=false;
 async function follow(){
-  if(following||!KEY||!cur||cur.example||cur.ended||!M)return;following=true;
+  if(following||!KEY||!cur||isTrack(cur)||cur.starter||cur.ended||!M)return;following=true;
   try{const d=await api(`events?s=${encodeURIComponent(cur.id)}&after=${M.maxId}`);
-    if(d.rows.length){const rows=(rowsCache.get(cur.id)||[]).concat(d.rows);rowsCache.set(cur.id,rows);
+    if(d.rows.length){const rows=(rowsCache.get(cur.id)||[]).concat(d.rows);cacheRows(cur.id,rows);
       const seen=M.maxId,keep=pos;M=build(rows);pos=keep;
-      if(playing&&liveMode)M.ev.filter(e=>e.id>seen).forEach(fire);
+      if(playing&&liveMode)M.ev.filter(e=>e.id>seen).forEach(e=>fire(e));
       idx=M.ev.findIndex(e=>e.x>pos);if(idx<0)idx=M.ev.length;cur.calls=M.ev.filter(e=>e.k==='T').length;setNP();}
     if(d.ended){cur.ended=true;if(liveMode){liveMode=false;cap=capSel;retime();seek(Math.min(pos,M.total));setNP();}}
   }catch(e){}finally{following=false;}
@@ -561,8 +712,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();
 addEventListener('online',status);addEventListener('offline',status);
 
 /* ---------- pairing UI ---------- */
-function unpair(){KEY=null;try{localStorage.removeItem('pulse.key')}catch(e){}sessions=[];rowsCache.clear();if(connecting)setConnecting(false);status();renderLib();$('#pairBtn').textContent='Pair device';load(SAMPLE.s,{autoplay:false});}
-function pairWith(k){KEY=k;store.set('pulse.key',k);$('#pairBtn').textContent='Devices';sessions=[];setConnecting(true);refresh();}
+function unpair(){KEY=null;store.del('pulse.key');store.del('pulse.cuts');cuts={};sessions=[];OWN_TRACKS=[];rowsCache.clear();picked=false;if(connecting)setConnecting(false);
+  reindex();status();renderLib();$('#pairBtn').textContent='Record your own';cur=null;M=null;playing=false;setPlayIcon();showStarter();}
+function pairWith(k){KEY=k;store.set('pulse.key',k);$('#pairBtn').textContent='Devices';sessions=[];picked=false;setConnecting(true);refresh();}
 $('#pairBtn').addEventListener('click',()=>{const on=!!KEY;$('#pairOff').hidden=on;$('#pairOn').hidden=!on;$('#pairErr').textContent='';
   if(on){const link=pairLink();const box=$('#qr');box.textContent='Loading code…';
     const draw=()=>{try{const q=qrcode(0,'M');q.addData(link);q.make();box.innerHTML=q.createImgTag(6,0);box.querySelector('img').alt='Pairing code';}catch(e){box.textContent='Use "Copy pairing link" instead.';}};
@@ -572,11 +724,12 @@ $('#pairGo').addEventListener('click',async()=>{
   const v=$('#pairInput').value.trim(),m=/pair=([^&\s]{12,})/.exec(v)||/^(\S{12,})$/.exec(v);
   if(!m){$('#pairErr').textContent='Type your key or paste the whole pairing link.';return;}
   const prevKey=KEY;KEY=decodeURIComponent(m[1]);
-  try{const r=await fetch('/api/sessions',{headers:{Authorization:'Bearer '+KEY}});if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(r.status===503&&j.error?j.error:'That link didn\'t work. Check that you copied all of it.');}
+  try{const r=await fetch('/api/sessions',{headers:{Authorization:'Bearer '+KEY}});if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(r.status===503&&j.error?j.error:'That key didn\'t work here. Pair on your own player, with its key.');}
     pairWith(KEY);$('#pairDlg').close();toast('This device is paired');}
   catch(e){KEY=prevKey;$('#pairErr').textContent=e.message;}
 });
-addEventListener('hashchange',()=>{const m=/[#&]pair=([^&]{12,})/.exec(location.hash);if(!m)return;const k=decodeURIComponent(m[1]);history.replaceState(null,'',location.pathname);pairWith(k);toast('This device is paired');});
+addEventListener('hashchange',()=>{const p=PAIR_RE.exec(location.hash),t=TRACK_RE.exec(location.hash);if(!p&&!t)return;history.replaceState(null,'',location.pathname);
+  if(p){pairWith(decodeURIComponent(p[1]));toast('This device is paired');}else openShared(t[1]);});
 $('#pairInput').addEventListener('input',()=>$('#pairErr').textContent='');
 $('#copyLink').addEventListener('click',()=>{const link=pairLink();navigator.clipboard.writeText(link).then(()=>toast('Pairing link copied'),()=>toast('Copy failed. Use the code instead.'));});
 $('#unpair').addEventListener('click',()=>{$('#pairDlg').close();unpair();toast('This device is unpaired');});
@@ -588,6 +741,22 @@ $('#copySetup').addEventListener('click',()=>{const t=`Set up Pulse for Claude C
 $('#shareBtn').addEventListener('click',async()=>{const d={title:'Pulse for Claude Code',text:'Hear and see Claude Code work. Free and open source, get your own in one click.',url:REPO};
   try{if(navigator.share){await navigator.share(d);return;}}catch(e){if(e&&e.name==='AbortError')return;}
   navigator.clipboard.writeText(REPO).then(()=>toast('Link copied'),()=>toast(REPO));});
+
+/* ---------- share a track ---------- */
+let shareFor=null,shareUrl='',shareT=null;
+async function makeShareUrl(){
+  const it=shareFor;if(!it)return;$('#shGo').disabled=$('#shCopy').disabled=true;
+  try{const packed=await encodeTrack({title:$('#shTitle').value.trim()||it.title,from:$('#shFrom').value,tempo:AUTO.tempo,rows:await itemRows(it)});
+    if(shareFor!==it)return;shareUrl=`${location.origin}/#t=${packed}`;$('#shGo').disabled=$('#shCopy').disabled=false;$('#shErr').textContent='';}
+  catch(e){$('#shErr').textContent='Couldn’t make the link. Check your connection and try again.';}
+}
+$('#shareTrack').addEventListener('click',()=>{if(!isTrack(cur))return;shareFor=cur;shareUrl='';$('#shTitle').value=cur.title;$('#shFrom').value=store.get('pulse.name','');$('#shErr').textContent='';$('#shareDlg').showModal();makeShareUrl();});
+['#shTitle','#shFrom'].forEach(s=>$(s).addEventListener('input',()=>{clearTimeout(shareT);$('#shGo').disabled=$('#shCopy').disabled=true;shareT=setTimeout(makeShareUrl,250);}));
+const shareDone=m=>{store.set('pulse.name',$('#shFrom').value.trim());toast(m);$('#shareDlg').close();};
+$('#shGo').addEventListener('click',async()=>{if(!shareUrl)return;const title=$('#shTitle').value.trim()||shareFor.title;
+  if(navigator.share){try{await navigator.share({title,text:`${title}: Claude Code at work, as a track. Tap play.`,url:shareUrl});shareDone('Shared');return;}catch(e){if(e&&e.name==='AbortError')return;}}
+  navigator.clipboard.writeText(shareUrl).then(()=>shareDone('Link copied'),()=>$('#shErr').textContent='Copy failed. Use Copy link instead.');});
+$('#shCopy').addEventListener('click',()=>{if(!shareUrl)return;navigator.clipboard.writeText(shareUrl).then(()=>shareDone('Link copied'),()=>$('#shErr').textContent='Copy failed. Try again.');});
 
 /* ---------- playlist dialog ---------- */
 let addFor=null;
@@ -603,6 +772,7 @@ $('#newListGo').addEventListener('click',()=>{const name=$('#newList').value.tri
 $('#newList').addEventListener('input',()=>$('#addErr').textContent='');
 
 /* ---------- events ---------- */
+document.querySelector('.seg').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(!b||b.dataset.mode===mode)return;mode=b.dataset.mode;store.set('pulse.mode',mode);renderLib();});
 $('#chips').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.new){openAdd(null);return;}view=b.dataset.v;store.set('pulse.view',view);renderLib();});
 $('#tracks').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.play)playFromView(b.dataset.play);else if(b.dataset.fav)toggleFav(b.dataset.fav);else if(b.dataset.add)openAdd(b.dataset.add);});
@@ -612,17 +782,19 @@ $('#favBtn').addEventListener('click',()=>cur&&toggleFav(cur.id));
 $('#play').addEventListener('click',()=>togglePlay());
 $('#next').addEventListener('click',()=>next());
 $('#prev').addEventListener('click',()=>prev());
+$('#rawBtn').addEventListener('click',()=>{if(!isTrack(cur)||cur.shared)return;const rec=findItem(cur.sid);if(!rec){toast('That recording isn’t here any more.');return;}
+  const e=M&&M.ev[Math.max(0,Math.min(idx,M.ev.length)-1)];queue=[rec.id];qi=0;from=albumOf(rec);played=new Set();load(rec,{autoplay:playing,atId:e?e.id:null});});
 $('#shuf').addEventListener('click',e=>{shuffle=!shuffle;played=new Set(cur?[cur.id]:[]);e.currentTarget.setAttribute('aria-pressed',String(shuffle));store.set('pulse.shuffle',shuffle);});
 $('#rep').addEventListener('click',e=>{repeat=(repeat+1)%3;const b=e.currentTarget;b.setAttribute('aria-pressed',String(repeat>0));$('#repOne').hidden=repeat!==2;b.setAttribute('aria-label',['Repeat off','Repeat all','Repeat one'][repeat]);store.set('pulse.repeat',repeat);});
 $('#liveBtn').addEventListener('click',async e=>{
   const btn=e.currentTarget,s=sessions.find(x=>x.id===$('#liveCard').dataset.id);if(!s||btn.dataset.busy)return;
   if(cur&&cur.id===s.id&&liveMode&&playing){togglePlay(false);return;}
   btn.dataset.busy='1';btn.disabled=true;btn.classList.remove('listening');btn.textContent='Tuning in…';
-  queue=[s.id];qi=0;from=pretty(s.project);rowsCache.delete(s.id);
+  queue=[s.id];qi=0;from=pretty(s.project);rowsCache.delete(s.id);picked=true;
   try{await load(s,{live:true});}finally{delete btn.dataset.busy;btn.disabled=false;status();renderLive();}
 });
 $('#speed').addEventListener('change',e=>speed=+e.target.value);
-$('#cap').addEventListener('change',e=>{capSel=+e.target.value;if(liveMode||!M)return;const r=realAt(pos);cap=capSel;retime();let p=0;for(const ev of M.ev){if(ev.r<=r)p=ev.x;else break;}seek(p);});
+$('#cap').addEventListener('change',e=>{capSel=+e.target.value;if(liveMode||!M||M.music)return;const r=realAt(pos);cap=capSel;retime();let p=0;for(const ev of M.ev){if(ev.r<=r)p=ev.x;else break;}seek(p);});
 $('#mute').addEventListener('click',e=>{muted=!muted;e.currentTarget.textContent=muted?'Sound off':'Sound on';e.currentTarget.setAttribute('aria-pressed',String(muted));});
 let drag=false;const miniSeek=ev=>{if(!M)return;const r=mini.getBoundingClientRect(),T=liveMode?Math.max(M.total,pos):M.total;if(liveMode){liveMode=false;cap=capSel;retime();setNP();status();}seek((ev.clientX-r.left)/r.width*T);};
 mini.addEventListener('pointerdown',e=>{drag=true;mini.setPointerCapture(e.pointerId);miniSeek(e);});
@@ -636,11 +808,15 @@ $('#shuf').setAttribute('aria-pressed',String(shuffle));$('#rep').setAttribute('
 readColors();size();new ResizeObserver(size).observe(roll);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors();renderTracks();if(cur)drawCover($('#cover'),cur);});
 document.fonts&&document.fonts.ready.then(readColors);
-$('#pairBtn').textContent=KEY?'Devices':'Pair device';
-if(KEY){setConnecting(true);refresh();}else{load(SAMPLE.s,{autoplay:false});queue=['example'];qi=0;renderLib();}
+$('#pairBtn').textContent=KEY?'Devices':'Record your own';
+if(KEY&&!sharedMatch)setConnecting(true);
+renderLib();
+sharedReady=restoreShared();
+loadStarter().then(()=>{if(!KEY)showStarter();else maybeShowOwn();});
+if(sharedMatch)openShared(sharedMatch[1]);
+if(KEY)refresh();
 status();requestAnimationFrame(frame);
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
-})();
 </script>
 </body>
 </html>

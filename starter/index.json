@@ -1,0 +1,41 @@
+{
+  "about": "Pulse starter pack. Each file is one recording in the .pulse format. See README.md.",
+  "recordings": [
+    {
+      "id": "starter-bug-hunt",
+      "file": "bug-hunt.pulse",
+      "title": "Bug Hunt",
+      "about": "A checkout bug: lots of reading, a failing test, fix after fix, then a regression test."
+    },
+    {
+      "id": "starter-research-sprint",
+      "file": "research-sprint.pulse",
+      "title": "Research Sprint",
+      "about": "Searching the web in bursts, three subagents reading side by side, then a write-up."
+    },
+    {
+      "id": "starter-refactor",
+      "file": "refactor.pulse",
+      "title": "Refactor",
+      "about": "A big rename across the codebase: wide searches, many edits, type checks until green."
+    },
+    {
+      "id": "starter-agent-swarm",
+      "file": "agent-swarm.pulse",
+      "title": "Agent Swarm",
+      "about": "Four subagents explore at once, then two build while issues come in through a connector."
+    },
+    {
+      "id": "starter-quick-fix",
+      "file": "quick-fix.pulse",
+      "title": "Quick Fix",
+      "about": "In and out: find the line, change it, run the tests, done."
+    },
+    {
+      "id": "starter-all-nighter",
+      "file": "all-nighter.pulse",
+      "title": "All-Nighter",
+      "about": "The raw hardcore edition: a whole night of work in one recording."
+    }
+  ]
+}
