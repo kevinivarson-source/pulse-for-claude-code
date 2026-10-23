@@ -151,6 +151,7 @@ a.btn{text-decoration:none;justify-content:center}
           <p class="meta" id="npMeta"></p>
         </div>
         <div class="np-act">
+          <button class="icon" id="puckBtn" type="button" aria-pressed="false" aria-label="Pop out the puck" title="Pop out: a small player that floats on top" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="15.5" cy="14.5" r="3"/></svg></button>
           <button class="icon" id="shareTrack" type="button" aria-label="Share this track" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></button>
           <button class="icon heart" id="favBtn" type="button" aria-pressed="false" aria-label="Add to favourites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20s-7-4.4-9.2-9C1.4 7.8 3.3 4.5 6.6 4.5c2 0 3.6 1.1 5.4 3.2 1.8-2.1 3.4-3.2 5.4-3.2 3.3 0 5.2 3.3 3.8 6.5C19 15.6 12 20 12 20z"/></svg></button>
         </div>
@@ -330,7 +331,7 @@ function build(rows,music=false){
   if(!ev.length)return null;
   const t0=ev[0].t;ev.forEach(e=>e.r=e.t-t0);
   const open={},notes=[];
-  ev.forEach((e,i)=>{if(e.k==='T'){const n={lane:e.lane,s:i,e:-1};notes.push(n);(open[e.tool]||(open[e.tool]=[])).push(n);}else if(e.k==='D'){const q=open[e.tool];if(q&&q.length)q.shift().e=i;}});
+  ev.forEach((e,i)=>{if(e.k==='T'){const n={lane:e.lane,s:i,e:-1};e.n=notes.length;notes.push(n);(open[e.tool]||(open[e.tool]=[])).push(n);}else if(e.k==='D'){const q=open[e.tool];if(q&&q.length)q.shift().e=i;}});
   const m={ev,notes,cuts:[],total:0,realTotal:ev[ev.length-1].r,maxId:Math.max(...ev.map(e=>e.id)),music};
   retime(m);return m;
 }
@@ -451,12 +452,13 @@ const tNow=$('#tNow'),tEnd=$('#tEnd'),tempo=$('#tempo'),statusEl=$('#status');
 let lastUi=0;
 function ui(now){
   if(now-lastUi<200)return;lastUi=now;
-  const r=realAt(pos);tNow.textContent=fmt(r);tEnd.textContent=liveMode?'live':fmt(M.realTotal);
+  const r=realAt(pos);tNow.textContent=fmt(r);tEnd.textContent=liveMode?'live':fmt(M.realTotal);pipUi();
   if(M.music){tempo.textContent=`${AUTO.tempo} BPM`;return;}
   let n=0;for(const e of M.ev){if(e.r>r)break;if(e.r>r-60000&&(e.k==='T'||e.k==='U'))n++;}
   tempo.textContent=`${n} actions/min`;
 }
-function setPlayIcon(){$('#playIcon').setAttribute('d',playing?'M6 4h4v16H6zM14 4h4v16h-4z':'M7 4.5v15l13-7.5z');$('#play').setAttribute('aria-label',playing?'Pause':'Play');
+const PLAY_D='M7 4.5v15l13-7.5z',PAUSE_D='M6 4h4v16H6zM14 4h4v16h-4z';
+function setPlayIcon(){$('#playIcon').setAttribute('d',playing?PAUSE_D:PLAY_D);$('#play').setAttribute('aria-label',playing?'Pause':'Play');pipPlayIcon();
   if(playing)$('#play').classList.remove('cue');
   if('mediaSession' in navigator)navigator.mediaSession.playbackState=playing?'playing':'paused';renderLive();}
 function setNP(){
@@ -474,25 +476,104 @@ function media(){
     for(const k in h)navigator.mediaSession.setActionHandler(k,h[k]);}catch(e){}
 }
 /* Sounds are scheduled a moment ahead on the audio clock, so the rhythm stays tight whatever the screen does. */
-function fire(e,delay=0){if(!muted&&ac&&SND[e.k]){lead=delay;try{SND[e.k](e.lane);}finally{lead=0;}}if(e.k!=='D'&&!reduce)ripples.push({lane:e.lane,born:performance.now()+delay*1000});}
+function fire(e,delay=0){const at=performance.now()+delay*1000;
+  if(e.k==='U')kickAt=at;else if(e.k==='T'){noteAt=at;if(e.n!=null)hotAt.set(e.n,at);}
+  if(!muted&&ac&&SND[e.k]){lead=delay;try{SND[e.k](e.lane);}finally{lead=0;}}if(e.k!=='D'&&!reduce)ripples.push({lane:e.lane,born:performance.now()+delay*1000});}
 const AHEAD=80;
-function frame(now){
-  const dt=frame.last?Math.min(now-frame.last,100):0;frame.last=now;
+function frame(){
+  const now=performance.now(),dt=frame.last?Math.min(now-frame.last,100):0;frame.last=now;
   if(playing&&M){
     const sp=liveMode?1:speed;pos+=dt*sp;let fired=0;
     while(idx<M.ev.length&&M.ev[idx].x<=pos+AHEAD*sp){const e=M.ev[idx];if(fired<8)fire(e,Math.max(0,(e.x-pos)/sp/1000));fired++;idx++;}
     if(!liveMode&&pos>=M.total+1200)onEnd();
   }
   if(connecting)drawWaiting(now,navigator.onLine?'Connecting to your player…':'You are offline');
-  else if(M){drawRoll(now);drawMini();ui(now);}
+  else if(M){if(!document.hidden){drawRoll(now);drawMini();}ui(now);}
   else drawWaiting(now,STARTER.failed?'Couldn’t load the starter pack':'Loading…');
-  requestAnimationFrame(frame);
+  if(puckG)drawPuck(now,dt);
+  schedule();
 }
 function togglePlay(force){
   audio();if(!M)return;const want=force===undefined?!playing:force;
   if(want){picked=true;if(!liveMode&&pos>=M.total)seek(-400);}
   if(want&&!playing&&liveMode){ripples=[];seek(Date.now()+skew-M.ev[0].t);}/* like live radio: resuming jumps back to now */
   playing=want;setPlayIcon();
+}
+
+/* ---------- the puck: a small window that floats on top of everything (Chrome and Edge on a computer) ----------
+   Built on Document Picture-in-Picture. While it is open the player runs on the puck window's clock, so the music
+   keeps going when this tab is in the background. The puck is the playing track's own ring of notes, turning in
+   time: notes already played light up, the newest glow, and every prompt kicks the beat dot. */
+const PUCK_OK='documentPictureInPicture' in window&&window.isSecureContext;
+let pip=null,puckCv=null,puckG=null,puckRot=0,kickAt=-1e9,noteAt=-1e9,loopGen=0;
+const hotAt=new Map(),PUCK_LANES=['read','write','shell','web','agent','mcp','other'];
+function schedule(){const gen=loopGen,w=pip&&!pip.closed?pip:window;w.requestAnimationFrame(()=>{if(gen===loopGen)frame();});}
+const fade=(age,len)=>age>=0&&age<len?1-age/len:0;
+function drawPuck(now,dt){
+  const cv=puckCv,W=cv.clientWidth,H=cv.clientHeight,S=Math.min(W,H);if(!S)return;
+  const d=Math.min(pip.devicePixelRatio||1,2);
+  if(cv.width!==Math.round(W*d)||cv.height!==Math.round(H*d)){cv.width=Math.round(W*d);cv.height=Math.round(H*d);}
+  const g=puckG,cx=W/2,cy=H/2,k=(S/2-2)/138,r0=44*k,r1=128*k,step=(r1-r0)/PUCK_LANES.length;
+  g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,W,H);
+  g.globalAlpha=1;g.fillStyle=C.bg;g.strokeStyle=C.line;g.lineWidth=1.5;g.beginPath();g.arc(cx,cy,138*k,0,7);g.fill();g.stroke();
+  g.globalAlpha=.55;g.lineWidth=1;for(let i=0;i<=PUCK_LANES.length;i++){g.beginPath();g.arc(cx,cy,r0+i*step,0,7);g.stroke();}
+  if(playing&&!reduce)puckRot=(puckRot+dt*16/1000*Math.PI/180)%(Math.PI*2);
+  if(M&&M.notes.length){
+    const n=M.notes.length,w=Math.min(.22,Math.PI*2/n*.8);g.lineCap='round';
+    for(let i=0;i<n;i++){
+      const note=M.notes[i],rr=r0+(PUCK_LANES.indexOf(note.lane)+.5)*step,a=puckRot-Math.PI/2+i/n*Math.PI*2,
+        on=M.ev[note.s].x<=pos,hot=on&&fade(now-(hotAt.get(i)??-1e9),420)>0;
+      g.globalAlpha=on?(playing?1:.7):.16;g.lineWidth=step*(hot?.95:.7);g.strokeStyle=C[note.lane];
+      g.beginPath();g.arc(cx,cy,rr,a,a+w);g.stroke();
+    }
+  }
+  const core=20*k,kick=fade(now-kickAt,520)**2,bump=.35*fade(now-noteAt,180),rip=fade(now-kickAt,700),
+    idle=playing||reduce?0:.06*Math.max(0,Math.sin(now%1600/1600*Math.PI*2));
+  if(rip>0&&!reduce){g.globalAlpha=.7*rip;g.strokeStyle=C.prompt;g.lineWidth=2;g.beginPath();g.arc(cx,cy,core+(132*k-core)*(1-rip),0,7);g.stroke();}
+  g.globalAlpha=1;g.fillStyle=C.prompt;g.beginPath();g.arc(cx,cy,core*(1+.24*Math.max(kick,bump)+idle),0,7);g.fill();
+}
+const PUCK_CSS=`html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:13px/1.4 var(--f-body)}
+.puck{position:fixed;inset:0;padding:6px;box-sizing:border-box}.puck canvas{width:100%;height:100%;display:block}
+.bar{position:fixed;left:0;right:0;bottom:0;box-sizing:border-box;padding:8px 12px 10px;display:grid;gap:8px;background:color-mix(in srgb,var(--bg) 90%,transparent);border-top:1px solid var(--line);transform:translateY(105%);transition:transform .16s ease-out}
+body:hover .bar,body:focus-within .bar{transform:none}
+.meta{display:flex;justify-content:space-between;align-items:baseline;gap:8px;min-width:0}
+.meta b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta span{font:12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.btns{display:flex;justify-content:center;align-items:center;gap:12px}
+button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--raise);color:var(--ink);display:grid;place-items:center;padding:0;cursor:pointer}
+button.main{width:48px;height:48px;border:0;background:var(--ink);color:var(--surface)}
+button svg{width:18px;height:18px}button.main svg{width:22px;height:22px}
+:focus-visible{outline:2px solid var(--l-read);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.bar{transition:none}}`;
+const PUCK_HTML=`<div class="puck"><canvas role="img" aria-label="The playing track as a ring of notes"></canvas></div>
+<div class="bar"><div class="meta"><b id="pt">Pulse</b><span id="pm"></span></div><div class="btns">
+<button type="button" id="pBack" aria-label="Back to the full player"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-8 8M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg></button>
+<button type="button" id="pPlay" class="main" aria-label="Play"><svg viewBox="0 0 24 24" fill="currentColor"><path id="pIcon" d="${PLAY_D}"/></svg></button>
+<button type="button" id="pNext" aria-label="Next"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+</div></div>`;
+function puckTheme(){if(!pip)return;const s=pip.document.documentElement.style;
+  ['--bg','--surface','--raise','--ink','--muted','--line','--l-read','--f-body','--f-mono'].forEach(v=>s.setProperty(v,cssv(v)));
+  s.colorScheme=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+function pipUi(){if(!pip)return;const d=pip.document;
+  d.getElementById('pt').textContent=cur?titleOf(cur):connecting?'Connecting…':'Pulse';
+  d.getElementById('pm').textContent=M&&!connecting?`${tNow.textContent} / ${tEnd.textContent}`:'';}
+function pipPlayIcon(){if(!pip)return;const d=pip.document;d.getElementById('pIcon').setAttribute('d',playing?PAUSE_D:PLAY_D);d.getElementById('pPlay').setAttribute('aria-label',playing?'Pause':'Play');}
+function setPuckBtn(){const b=$('#puckBtn'),on=!!pip;b.setAttribute('aria-pressed',String(on));b.setAttribute('aria-label',on?'Close the puck':'Pop out the puck');
+  b.title=on?'Close the puck':'Pop out: a small player that floats on top';}
+async function togglePuck(){
+  if(pip){pip.close();return;}
+  audio();
+  let w;try{w=await documentPictureInPicture.requestWindow({width:220,height:220});}catch(e){toast('Couldn\u2019t open the puck. Try again.');return;}
+  pip=w;const d=w.document;d.title='Pulse';
+  document.querySelectorAll('link[rel="stylesheet"]').forEach(l=>d.head.append(l.cloneNode()));
+  const st=d.createElement('style');st.textContent=PUCK_CSS;d.head.append(st);
+  d.body.innerHTML=PUCK_HTML;puckCv=d.querySelector('canvas');puckG=puckCv.getContext('2d');puckTheme();
+  d.getElementById('pPlay').addEventListener('click',()=>togglePlay());
+  d.getElementById('pNext').addEventListener('click',()=>next());
+  d.getElementById('pBack').addEventListener('click',()=>{w.close();window.focus();});
+  d.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.target.closest('button')){e.preventDefault();togglePlay();}});
+  w.addEventListener('pagehide',()=>{if(pip!==w)return;pip=puckCv=puckG=null;setPuckBtn();loopGen++;schedule();});
+  setPuckBtn();pipUi();pipPlayIcon();loopGen++;schedule();
 }
 
 /* ---------- loading what to play ---------- */
@@ -516,7 +597,7 @@ async function load(it,{autoplay=true,live=false,atId=null}={}){
   if(seq!==loadSeq)return;
   if(slow)status();
   M=build(rows,isTrack(it))||build([[0,startOf(it)||0,'S','']],isTrack(it));
-  played.add(it.id);ripples=[];
+  played.add(it.id);ripples=[];hotAt.clear();
   let p=-400;
   if(liveMode)p=Date.now()+skew-M.ev[0].t;
   else if(atId!=null){const e=M.ev.find(e=>e.id===atId);if(e)p=e.x-400;}
@@ -678,7 +759,7 @@ function setConnecting(on){
   status();renderLib();
 }
 async function refresh(){
-  if(!KEY||refreshing||(document.hidden&&!connecting))return;refreshing=true;
+  if(!KEY||refreshing||(document.hidden&&!connecting&&!pip))return;refreshing=true;
   try{const d=await api('sessions');skew=d.now-Date.now();sessions=d.sessions;
     const woke=connecting;if(woke)setConnecting(false);
     if(cur&&!isTrack(cur)&&!cur.starter){const fresh=sessions.find(s=>s.id===cur.id);if(fresh)Object.assign(cur,fresh);}
@@ -780,6 +861,7 @@ $('#listAction').addEventListener('click',e=>{const b=e.currentTarget;if(!b.data
   lib.lists=lib.lists.filter(l=>'l:'+l.id!==view);view='all';store.set('pulse.view',view);saveLib();});
 $('#favBtn').addEventListener('click',()=>cur&&toggleFav(cur.id));
 $('#play').addEventListener('click',()=>togglePlay());
+$('#puckBtn').addEventListener('click',()=>togglePuck());
 $('#next').addEventListener('click',()=>next());
 $('#prev').addEventListener('click',()=>prev());
 $('#rawBtn').addEventListener('click',()=>{if(!isTrack(cur)||cur.shared)return;const rec=findItem(cur.sid);if(!rec){toast('That recording isn’t here any more.');return;}
@@ -806,7 +888,8 @@ document.addEventListener('keydown',e=>{if(e.target.closest('input,select,textar
 shuffle=store.get('pulse.shuffle',false);repeat=store.get('pulse.repeat',0);
 $('#shuf').setAttribute('aria-pressed',String(shuffle));$('#rep').setAttribute('aria-pressed',String(repeat>0));$('#repOne').hidden=repeat!==2;
 readColors();size();new ResizeObserver(size).observe(roll);
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors();renderTracks();if(cur)drawCover($('#cover'),cur);});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors();renderTracks();if(cur)drawCover($('#cover'),cur);puckTheme();});
+$('#puckBtn').hidden=!PUCK_OK;
 document.fonts&&document.fonts.ready.then(readColors);
 $('#pairBtn').textContent=KEY?'Devices':'Record your own';
 if(KEY&&!sharedMatch)setConnecting(true);
@@ -815,7 +898,7 @@ sharedReady=restoreShared();
 loadStarter().then(()=>{if(!KEY)showStarter();else maybeShowOwn();});
 if(sharedMatch)openShared(sharedMatch[1]);
 if(KEY)refresh();
-status();requestAnimationFrame(frame);
+status();schedule();
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 </script>
 </body>

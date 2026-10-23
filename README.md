@@ -15,6 +15,7 @@ Every Pulse player opens with a starter pack, so there's something to hear befor
 - **Raw recordings**: the whole session in real time, with long pauses shortened while you listen.
 - **Share a track**: the share button makes a link with the whole track inside it. Your friend taps it and presses play, no account needed. Only the rhythm travels: no project names, prompts or code.
 - **Live mode**: watch and hear Claude work in real time, about a second behind, on any device.
+- **The puck**: pop the player out into a small round player that floats on top of your other windows, so you can keep listening while you work. It shows the playing track as a ring of notes, turning in time. Works in Chrome and Edge on a computer.
 - **Shuffle, repeat, favourites and playlists**, lock-screen controls on phones, and it installs like an app.
 
 ## Record your own, in one click
