@@ -1,0 +1,8 @@
+{
+  "name": "pulse-disc",
+  "productName": "Pulse Disc",
+  "version": "0.1.0",
+  "description": "Pulse as a disc that floats on your desktop. Test version.",
+  "license": "MIT",
+  "main": "main.js"
+}
